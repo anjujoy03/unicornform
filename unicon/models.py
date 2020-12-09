@@ -1,5 +1,5 @@
 from django.db import models
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String,text
 from sqlalchemy.dialects.mysql import DATETIME, INTEGER, LONGTEXT, SMALLINT, TINYINT
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -56,6 +56,29 @@ class SupplierTable(Base):
     phone_number = Column(String(45))
     alternate_number = Column(String(45))
     email = Column(String(45))
+    payment_status = Column(String(45), server_default=text("'open'"))
+    prod_type = Column(String(45))
+    prod_sub_type = Column(String(45))
+    is_companydeler = Column(String(5))
+    compnay_names = Column(String(600))
+    is_wholesaler = Column(String(5))
+    is_retailer = Column(String(5))
+    company_undertaking = Column(String(600))
+    no_labours = Column(String(10))
+    male_number = Column(String(10))
+    female_number = Column(String(10))
+    readymade_providng_items = Column(String(650))
+    Providing_accesoseries = Column(String(650))
+
+
+
+class SupplierProductionDtl(Base):
+    __tablename__ = 'supplier_production_dtls'
+
+    poduction_id = Column(INTEGER(11), primary_key=True)
+    item_name = Column(String(30), nullable=False)
+    item_count = Column(String(10), nullable=False)
+    sid = Column(String(10), nullable=False)
 
 class LaborsTechnision(Base):
     __tablename__ = 'labors_technisions'
@@ -70,6 +93,8 @@ class LaborsTechnision(Base):
     pincode = Column(String(45))
     phone = Column(String(45))
     alternate_number = Column(String(45))
+    work_type = Column(String(45), nullable=False)
+    status = Column(String(45), nullable=False)
 
 class MachinesSparepart(Base):
     __tablename__ = 'machines_spareparts'
@@ -87,3 +112,73 @@ class MachinesSparepart(Base):
     phone = Column(String(45))
     alternate_number = Column(String(45))
     org_name = Column(String(120))
+    work_type = Column(String(45), nullable=False)
+    status = Column(String(45), nullable=False)
+
+class CustomerOrderDtl(Base):
+    __tablename__ = 'customer_order_dtls'
+
+    order_id = Column(String(45))
+    user_id = Column(String(45))
+    product_type = Column(String(45))
+    prod_sub_type = Column(String(45))
+    category_type = Column(String(45))
+    brand_name = Column(String(45))
+    catalog_number = Column(String(45))
+    design_no = Column(String(45))
+    sahde_no = Column(String(45))
+    photo = Column(String(45))
+    delivery_date = Column(String(45))
+    message = Column(String(45))
+    is_invidulaystiched = Column(String(45))
+    total_count = Column(String(45))
+    id = Column(INTEGER(11), primary_key=True)
+
+
+class CustomerAddProductDtl(Base):
+    __tablename__ = 'customer_add_product_dtls'
+
+    prod_id = Column(INTEGER(11), primary_key=True)
+    order_id = Column(String(45))
+    name = Column(String(45))
+    size = Column(String(45))
+    user_id = Column(String(45))
+
+class CategoryDtl(Base):
+    __tablename__ = 'category_dtls'
+
+    cat_id = Column(INTEGER(11), primary_key=True)
+    cat_name = Column(String(100), nullable=False)
+    cat_item = Column(String(120), nullable=False)
+
+class SupplierTempDtl(Base):
+    __tablename__ = 'supplier_temp_dtls'
+
+    temp_id = Column(INTEGER(11), primary_key=True)
+    name = Column(String(45), nullable=False)
+    comapny_name = Column(String(200), nullable=False)
+    start_year = Column(DateTime, nullable=False)
+    place = Column(String(45), nullable=False)
+    state = Column(String(45), nullable=False)
+    district = Column(String(45), nullable=False)
+    pincode = Column(String(15), nullable=False)
+    gst_number = Column(String(20), nullable=False)
+    udayam_number = Column(String(20), nullable=False)
+    phone_number = Column(String(20), nullable=False)
+    alt_phone_number = Column(String(20), nullable=False)
+    email = Column(String(20), nullable=False)
+
+class ProductDtl(Base):
+    __tablename__ = 'product_dtls'
+
+    prod_id = Column(INTEGER(11), primary_key=True)
+    item_name = Column(String(45))
+    item_code = Column(String(45))
+    size = Column(String(45))
+    shades = Column(String(45))
+    image = Column(String(45))
+    price = Column(String(45))
+    quantity = Column(String(45))
+    status = Column(String(45))
+    user_id = Column(String(45))
+    prod_type = Column(String(45))

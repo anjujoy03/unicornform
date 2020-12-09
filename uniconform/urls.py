@@ -23,3 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     url(r'^', include(('unicon.urls', 'unicon'), namespace='unicon')),
 ]
+if settings.DEBUG:
+  urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

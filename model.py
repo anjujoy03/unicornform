@@ -1,6 +1,6 @@
 # coding: utf-8
 from sqlalchemy import Column, DateTime, ForeignKey, Index, String
-from sqlalchemy.dialects.mysql import DATETIME, INTEGER, LONGTEXT, SMALLINT, TINYINT
+from sqlalchemy.dialects.mysql import DATETIME, INTEGER, LONGTEXT, TINYINT
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -61,7 +61,7 @@ class CustomerDtl(Base):
 class CustomerOrderDtl(Base):
     __tablename__ = 'customer_order_dtls'
 
-    order_id = Column(INTEGER(11), primary_key=True)
+    order_id = Column(String(45))
     user_id = Column(String(45))
     product_type = Column(String(45))
     prod_sub_type = Column(String(45))
@@ -74,6 +74,8 @@ class CustomerOrderDtl(Base):
     delivery_date = Column(String(45))
     message = Column(String(45))
     is_invidulaystiched = Column(String(45))
+    total_count = Column(String(45))
+    id = Column(INTEGER(11), primary_key=True)
 
 
 class DjangoContentType(Base):
@@ -163,24 +165,6 @@ class SupplierAddProd(Base):
     count = Column(String(45))
 
 
-class SupplierOrderDtl(Base):
-    __tablename__ = 'supplier_order_dtls'
-
-    supplier_order_id = Column(INTEGER(11), primary_key=True)
-    user_id = Column(String(45))
-    product_type = Column(String(45), comment='customized_uniformss,readymades,unifromaccrs')
-    product_subtype = Column(String(45), comment='fabric,stiching,fabricandstichng')
-    is_company_dealer = Column(String(45))
-    compnaies_that_leads = Column(String(45))
-    is_whole_saler = Column(String(45))
-    is_retailer = Column(String(45))
-    company_name = Column(String(45))
-    labours_number = Column(String(45))
-    male_numbers = Column(String(45))
-    categoriesl = Column(String(45))
-    provided_items = Column(String(45))
-
-
 class SupplierTable(Base):
     __tablename__ = 'supplier_table'
 
@@ -225,71 +209,3 @@ class AuthPermission(Base):
     codename = Column(String(100), nullable=False)
 
     content_type = relationship('DjangoContentType')
-
-
-class AuthUserGroup(Base):
-    __tablename__ = 'auth_user_groups'
-    __table_args__ = (
-        Index('auth_user_groups_user_id_group_id_94350c0c_uniq', 'user_id', 'group_id', unique=True),
-    )
-
-    id = Column(INTEGER(11), primary_key=True)
-    user_id = Column(ForeignKey('auth_user.id'), nullable=False)
-    group_id = Column(ForeignKey('auth_group.id'), nullable=False, index=True)
-
-    group = relationship('AuthGroup')
-    user = relationship('AuthUser')
-
-
-class AuthtokenToken(Base):
-    __tablename__ = 'authtoken_token'
-
-    key = Column(String(40), primary_key=True)
-    created = Column(DATETIME(fsp=6), nullable=False)
-    user_id = Column(ForeignKey('auth_user.id'), nullable=False, unique=True)
-
-    user = relationship('AuthUser')
-
-
-class DjangoAdminLog(Base):
-    __tablename__ = 'django_admin_log'
-
-    id = Column(INTEGER(11), primary_key=True)
-    action_time = Column(DATETIME(fsp=6), nullable=False)
-    object_id = Column(LONGTEXT)
-    object_repr = Column(String(200), nullable=False)
-    action_flag = Column(SMALLINT(5), nullable=False)
-    change_message = Column(LONGTEXT, nullable=False)
-    content_type_id = Column(ForeignKey('django_content_type.id'), index=True)
-    user_id = Column(ForeignKey('auth_user.id'), nullable=False, index=True)
-
-    content_type = relationship('DjangoContentType')
-    user = relationship('AuthUser')
-
-
-class AuthGroupPermission(Base):
-    __tablename__ = 'auth_group_permissions'
-    __table_args__ = (
-        Index('auth_group_permissions_group_id_permission_id_0cd325b0_uniq', 'group_id', 'permission_id', unique=True),
-    )
-
-    id = Column(INTEGER(11), primary_key=True)
-    group_id = Column(ForeignKey('auth_group.id'), nullable=False)
-    permission_id = Column(ForeignKey('auth_permission.id'), nullable=False, index=True)
-
-    group = relationship('AuthGroup')
-    permission = relationship('AuthPermission')
-
-
-class AuthUserUserPermission(Base):
-    __tablename__ = 'auth_user_user_permissions'
-    __table_args__ = (
-        Index('auth_user_user_permissions_user_id_permission_id_14a6b632_uniq', 'user_id', 'permission_id', unique=True),
-    )
-
-    id = Column(INTEGER(11), primary_key=True)
-    user_id = Column(ForeignKey('auth_user.id'), nullable=False)
-    permission_id = Column(ForeignKey('auth_permission.id'), nullable=False, index=True)
-
-    permission = relationship('AuthPermission')
-    user = relationship('AuthUser')
