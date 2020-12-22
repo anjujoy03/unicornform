@@ -25,9 +25,11 @@ SECRET_KEY = '-1$2^!l%sbf)&t54o4^g*928dbvvdho@^^c85)2t*ahv&wf7fu'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [ '*']
 
-
+CORS_ALLOWED_ORIGINS = [
+    # "http://localhost:4200",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,14 +41,23 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'unicon',
     'rest_framework',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'corsheaders',
 ]
 
 
+# JWT_AUTH = {
+#     # Authorization:Token xxx
+#     'JWT_AUTH_HEADER_PREFIX': 'Token',
+# }
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',  # <-- And here
-    ],
+     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        # 'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated', 
+        )
 }
 
 import os
@@ -62,9 +73,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'uniconform.urls'
+
+AUTHENTICATION_BACKENDS = (
+    # 'django.contrib.auth.backends.ModelBackend',
+    'unicon.views.Authenticate',
+)
 
 import os
 
@@ -152,6 +170,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST='smtp.gmail.com'
 EMAIL_PORT=587
 EMAIL_HOST_USER = 'anjujoy0310@gmail.com'
-EMAIL_HOST_PASSWORD = 'qttseqhizmtpmvyi'  
+EMAIL_HOST_PASSWORD = 'kczzepmlyunbpgjl'  
 DEFAULT_FROM_EMAIL = 'anjujoy0310@gmail.com'
 EMAIL_USE_TLS = True

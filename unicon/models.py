@@ -21,7 +21,10 @@ class UsersDtl(Base):
     email = Column(String(120))
     phone = Column(String(45))
     def check_password(self, raw_password):
-         return check_password(raw_password, self.password)
+        return check_password(raw_password, self.password)
+    def is_authenticated():
+        return True
+
 
 class CustomerDtl(Base):
     __tablename__ = 'customer_dtls'
@@ -38,6 +41,7 @@ class CustomerDtl(Base):
     pincode = Column(String(45))
     phone_number = Column(String(45))
     prouduct_type = Column(String(45), comment='cousomized/readymade/accessories')
+    alternative_number = Column(String(45))
 
 class SupplierTable(Base):
     __tablename__ = 'supplier_table'
@@ -112,8 +116,9 @@ class MachinesSparepart(Base):
     phone = Column(String(45))
     alternate_number = Column(String(45))
     org_name = Column(String(120))
-    work_type = Column(String(45), nullable=False)
-    status = Column(String(45), nullable=False)
+    work_type = Column(String(45))
+    status = Column(String(45))
+    
 
 class CustomerOrderDtl(Base):
     __tablename__ = 'customer_order_dtls'
@@ -182,3 +187,12 @@ class ProductDtl(Base):
     status = Column(String(45))
     user_id = Column(String(45))
     prod_type = Column(String(45))
+
+
+class AuthToken(Base):
+    __tablename__ = 'auth_token'
+
+    id = Column(INTEGER(11), primary_key=True)
+    key = Column(String(600))
+    created = Column(String(45))
+    user_id = Column(String(45))
