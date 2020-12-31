@@ -140,6 +140,7 @@ def SaveCustomer(request):
         user.password = raw_password
         user.email=email
         user.phone=phone
+        user.status='login'
         session.add(user)
         customer = CustomerDtl()
         customer.category_type='Buyer'
@@ -232,46 +233,50 @@ def get_user(user_id):
     return user_data
 
 
-class Authenticate(APIView):
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            user_id = request.data['user_id']
-            password = request.data['password']
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def Authenticate(request):
+    try:
+        session = dbsession.Session()
+        user_id = request.data['user_id']
+        password = request.data['password']
             #user = authenticate(request, user_id=user_id, password=password)
-            print(user)
-            user_data = get_user(user_id)
-            if user_data == None:
-                return Response({'response': 'Error','message':'Please provide a valid user name'})
-            user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).one()
-            if user.check_password(password):
-                user.status='login'
-                DateEncoder = JSONDateEncoder()
-                payload = {
-					'user_id': user.user_id,
-					'expiry' : DateEncoder.default(datetime.date.today() + datetime.timedelta(days=1))
+        
+        user_data = get_user(user_id)
+        if user_data == None:
+            return Response({'response': 'Error','message':'Please provide a valid user name'})
+        user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id,UsersDtl.status=='login').one()
+        if user.check_password(password):
+            DateEncoder = JSONDateEncoder()
+            payload = {
+                'user_id': user.user_id,
+				'expiry' : DateEncoder.default(datetime.date.today() + datetime.timedelta(days=1))
 				}
-                token = jwt.encode(payload, settings.SECRET_KEY)
-                print(token)
-                session.query(AuthToken).filter_by(user_id=user.user_id).delete()
-                auth_token = AuthToken()
-                auth_token.key = token
-                auth_token.created = datetime.datetime.now()
-                auth_token.user_id = user.user_id
-                session.add(auth_token)
-                session.commit()
-                user_details = {}
-                user_details['token'] = token
-                customer_dtls=session.query(CustomerDtl).filter(CustomerDtl.user_id==user_id).all()
-                customer_dtls_list = json.loads(json.dumps(customer_dtls, cls=AlchemyEncoder))
+            token = jwt.encode(payload, settings.SECRET_KEY)
+            print(token)
+            session.query(AuthToken).filter_by(user_id=user.user_id).delete()
+            auth_token = AuthToken()
+            auth_token.key = token
+            auth_token.created = datetime.datetime.now()
+            auth_token.user_id = user.user_id
+            session.add(auth_token)
+            session.commit()
+            user_details = {}
+            user_details['token'] = token
+            customer_dtls=session.query(UsersDtl.user_type,UsersDtl.user_id).filter(UsersDtl.user_id==user_id).all()
+            customer_dtls_list = json.loads(json.dumps(customer_dtls, cls=AlchemyEncoder))
+            user_details['data'] = customer_dtls_list
+        else:
+            return Response({'response': 'Error','message':'Please provide a valid credentials'})
 
-                if request.data['user_type']=='uniform' and request.data['sub_type']=='customer':
-                    customer_dtls=session.query(CustomerDtl).filter(CustomerDtl.user_id==user_id).all()
-                    if len(customer_dtls)==0:
-                        return Response({'response': 'error','message':'user not found in the specified category'})
-                    else:
-                        customer_dtls_list = json.loads(json.dumps(customer_dtls, cls=AlchemyEncoder))
-                        return Response({'response': 'success','data':customer_dtls_list,'type':'buyerandseller','category':'customer'})
+
+                # if request.data['user_type']=='uniform' and request.data['sub_type']=='customer':
+                #     customer_dtls=session.query(CustomerDtl).filter(CustomerDtl.user_id==user_id).all()
+                #     if len(customer_dtls)==0:
+                #         return Response({'response': 'error','message':'user not found in the specified category'})
+                #     else:
+                #         customer_dtls_list = json.loads(json.dumps(customer_dtls, cls=AlchemyEncoder))
+                #         return Response({'response': 'success','data':customer_dtls_list,'type':'buyerandseller','category':'customer'})
 
             #     if request.data['user_type']=='unifom' and request.data['sub_type']=='supplier':
             #         customer_dtls=session.query(SupplierTable).filter(SupplierTable.user_id==user_id).all()
@@ -303,13 +308,13 @@ class Authenticate(APIView):
 
 
             
-            session.close()
-            return Response({'response': 'success','data':user_details})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
+        session.close()
+        return Response({'response': 'success','data':user_details})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
 def AddCustomerordes(request):
@@ -571,6 +576,7 @@ def SaveLabours(request):
         labors.phone=request.data['phone_number']
         labors.alternate_number=request.data['alternate_number']
         labors.work_type=request.data['work_type']
+        labors.email=request.data['email']
         labors.status="active"
         session.add(labors)
         session.commit()
@@ -699,14 +705,18 @@ class getStockBasedList(APIView):
             session.close()
             return Response({'response': 'Error occured'})
 
-class SaveSupplier(APIView):
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            email=request.data['email']
-            phone=request.data['phone_number']
-            delete_id=request.data['delete_id']
-            session.query(SupplierTempDtl).filter(SupplierTempDtl.temp_id==delete_id).delete()
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def SaveSupplier(request):
+    try:
+        session = dbsession.Session()
+        # email=request.data['email']
+        # phone=request.data['phone_number']
+        print(request.data)
+        delete_id=request.data['temp_id']
+        data=session.query(SupplierTempDtl.name,SupplierTempDtl.start_year,SupplierTempDtl.comapny_name,SupplierTempDtl.place,SupplierTempDtl.state,SupplierTempDtl.district,SupplierTempDtl.pincode,SupplierTempDtl.gst_number,SupplierTempDtl.udayam_number,SupplierTempDtl.phone_number,SupplierTempDtl.alt_phone_number,SupplierTempDtl.email,SupplierTempDtl.password).filter(SupplierTempDtl.temp_id==delete_id).one()
+        print(data[0])
+        #session.query(SupplierTempDtl).filter(SupplierTempDtl.temp_id==delete_id).delete()
 
             # phno_check = session.query(UsersDtl).filter(UsersDtl.phone==phone).all()
             # if(len(phno_check) > 0):
@@ -714,244 +724,249 @@ class SaveSupplier(APIView):
             # email_check = session.query(UsersDtl).filter(UsersDtl.email==email).all()
             # if(len(email_check) > 0):
             #     return Response({'status': 'email  exists','message':'email already exists'})
+        
 
 
-            if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='fabric':
-                user_id = getUserId('FS')
-                otpParams ={
+        if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='fabric':
+            user_id = getUserId('FS')
+            otpParams ={
                 "user_id":user_id,
-                "email":email
+                "email":data[11]
                 }
-                emailResult=SendEmail(otpParams)
-                print(emailResult)
-                user = UsersDtl()
+            print(data[11])
+            emailResult=SendEmail(otpParams)
+            print(emailResult)
+            user = UsersDtl()
 
-                raw_password = make_password(request.data['password'])
-                user.user_id = user_id
-                user.user_type = 'supplier'
-                user.category_type = request.data['prod_type']
-                user.password = raw_password
-                user.email=email
-                user.phone=phone
-                session.add(user)
-                supplier=SupplierTable()
-                supplier.user_id=user_id
-                supplier.supplier_name=request.data['supplier_name']
-                supplier.organization_name=request.data['organization_name']
-                supplier.org_started_year=request.data['org_started_year']
-                supplier.prod_type=request.data['prod_type']
-                supplier.prod_sub_type=request.data['sub_type']
-                supplier.place=request.data['place']
-                supplier.state=request.data['state']
-                supplier.district=request.data['district']
-                supplier.pincode=request.data['pincode']
-                supplier.gst_number=request.data['gst_number']
-                supplier.udayam_number=request.data['udayam_number']
-                supplier.phone_number=request.data['phone_number']
-                supplier.alternate_number=request.data['alternate_number']
-                if request.data['is_companydeler']=='Yes':
-                    supplier.compnay_names=request.data['compnay_names']
-                    request.is_companydeler='Yes'
-                else:
-                    request.is_companydeler='No'
-                supplier.is_wholesaler=request.data['is_wholesaler']
-                supplier.is_retailer=request.data['is_retailer']
-                supplier.email=request.data['email']
-                session.add(supplier)
-                session.commit()
-            if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='stitching':
-                user_id = getUserId('TS')
-                otpParams ={
+            raw_password = make_password(data[12])
+            user.user_id = user_id
+            user.user_type = 'supplier'
+            user.category_type = request.data['prod_type']
+            user.password = raw_password
+            user.email=data[11]
+            user.phone=data[9]
+            session.add(user)
+            supplier=SupplierTable()
+            supplier.user_id=user_id
+            supplier.supplier_name=data[0]
+            supplier.organization_name=data[2]
+            supplier.org_started_year=data[1]
+            supplier.prod_type=request.data['prod_type']
+            supplier.prod_sub_type=request.data['sub_type']
+            supplier.place=data[3]
+            supplier.state=data[4]
+            supplier.district=data[5]
+            supplier.pincode=data[6]
+            supplier.gst_number=data[7]
+            supplier.udayam_number=data[8]
+            supplier.phone_number=data[9]
+            supplier.alternate_number=data[10]
+            if request.data['is_companydeler']=='Yes':
+                supplier.compnay_names=request.data['compnay_names']
+                supplier.is_companydeler='Yes'
+            else:
+                supplier.is_companydeler='No'
+            supplier.is_wholesaler=request.data['is_wholesaler']
+            supplier.is_retailer=request.data['is_retailer']
+            supplier.email=data[11]
+            session.add(supplier)
+            session.commit()
+        if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='stitching':
+
+
+            order_lines=json.dumps(request.data['order_lines'])
+            user_id = getUserId('TS')
+            otpParams ={
                 "user_id":user_id,
-                "email":email
+                "email":data[11]
                 }
-                emailResult=SendEmail(otpParams)
-                print(emailResult)
-                user = UsersDtl()
+            emailResult=SendEmail(otpParams)
+            print(emailResult)
+            user = UsersDtl()
 
-                raw_password = make_password(request.data['password'])
-                user.user_id = user_id
-                user.user_type = 'supplier'
-                user.category_type = request.data['prod_type']
-                user.password = raw_password
-                user.email=email
-                user.phone=phone
-                session.add(user)
-                supplier=SupplierTable()
-                supplier.user_id=user_id
-                supplier.supplier_name=request.data['supplier_name']
-                supplier.organization_name=request.data['organization_name']
-                supplier.org_started_year=request.data['org_started_year']
-                supplier.prod_type=request.data['prod_type']
-                supplier.prod_sub_type=request.data['sub_type']
-                supplier.place=request.data['place']
-                supplier.state=request.data['state']
-                supplier.district=request.data['district']
-                supplier.pincode=request.data['pincode']
-                supplier.gst_number=request.data['gst_number']
-                supplier.udayam_number=request.data['udayam_number']
-                supplier.phone_number=request.data['phone_number']
-                supplier.alternate_number=request.data['alternate_number']
-                supplier.email=request.data['email']
-                supplier.company_undertaking=request.data['company_undertaking']
-                supplier.no_labours=request.data['no_labours']
-                supplier.male_number=request.data['male_number']
-                supplier.female_number=request.data['female_number']
-                session.add(supplier)
+            raw_password = make_password(data[12])
+            user.user_id = user_id
+            user.user_type = 'supplier'
+            user.category_type = request.data['prod_type']
+            user.password = raw_password
+            user.email=data[11]
+            user.phone=data[9]
+            session.add(user)
+            supplier=SupplierTable()
+            supplier.user_id=user_id
+            supplier.supplier_name=data[0]
+            supplier.organization_name=data[2]
+            supplier.org_started_year=data[1]
+            supplier.prod_type=request.data['prod_type']
+            supplier.prod_sub_type=request.data['sub_type']
+            supplier.place=data[3]
+            supplier.state=data[4]
+            supplier.district=data[5]
+            supplier.pincode=data[6]
+            supplier.gst_number=data[7]
+            supplier.udayam_number=data[8]
+            supplier.phone_number=data[9]
+            supplier.alternate_number=data[10]
+            supplier.email=data[11]
+            supplier.company_undertaking=request.data['company_undertaking']
+            supplier.no_labours=request.data['no_labours']
+            supplier.male_number=request.data['male_number']
+            supplier.female_number=request.data['female_number']
+            session.add(supplier)
+            session.commit()
+            #session.flush()
+            for x in json.loads(order_lines):
+                production_dtls=SupplierProductionDtl()
+                production_dtls.item_name=x['item']
+                production_dtls.item_count=x['count']
+                production_dtls.sid=supplier.sid
+                session.add(production_dtls)
                 session.commit()
-                session.flush()
-                for x in request.data['product_list']:
-                    production_dtls=SupplierProductionDtl()
-                    production_dtls.item_name=x['item_name']
-                    production_dtls.item_count=x['item_count']
-                    production_dtls.sid=supplier.sid
-                    session.add(production_dtls)
-                session.commit()
-            if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='fabricandstitching':
-                user_id = getUserId('FT')
-                otpParams ={
+        if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='fabricandstitching':
+            user_id = getUserId('FT')
+            otpParams ={
                 "user_id":user_id,
-                "email":email
+                "email":data[11]
                 }
-                emailResult=SendEmail(otpParams)
-                print(emailResult)
-                user = UsersDtl()
+            emailResult=SendEmail(otpParams)
+            print(emailResult)
+            order_lines=json.dumps(request.data['order_lines'])
+            user = UsersDtl()
 
-                raw_password = make_password(request.data['password'])
-                user.user_id = user_id
-                user.user_type = 'supplier'
-                user.category_type = request.data['prod_type']
-                user.password = raw_password
-                user.email=email
-                user.phone=phone
-                session.add(user)
-                supplier=SupplierTable()
-                supplier.user_id=user_id
-                supplier.supplier_name=request.data['supplier_name']
-                supplier.organization_name=request.data['organization_name']
-                supplier.org_started_year=request.data['org_started_year']
-                supplier.prod_type=request.data['prod_type']
-                supplier.prod_sub_type=request.data['sub_type']
-                supplier.place=request.data['place']
-                supplier.state=request.data['state']
-                supplier.district=request.data['district']
-                supplier.pincode=request.data['pincode']
-                supplier.gst_number=request.data['gst_number']
-                supplier.udayam_number=request.data['udayam_number']
-                supplier.phone_number=request.data['phone_number']
-                supplier.alternate_number=request.data['alternate_number']
-                supplier.email=request.data['email']
-                if request.data['is_companydeler']=='yes':
-                    supplier.compnay_names=request.data['compnay_names']
-                supplier.is_wholesaler=request.data['is_wholesaler']
-                supplier.is_retailer=request.data['is_retailer']
-                supplier.company_undertaking=request.data['company_undertaking']
-                supplier.no_labours=request.data['no_labours']
-                supplier.male_number=request.data['male_number']
-                supplier.female_number=request.data['female_number']
-                session.add(supplier)
-                session.flush()
-                for x in request.data['product_list']:
-                    production_dtls=SupplierProductionDtl()
-                    production_dtls.item_name=x['item_name']
-                    production_dtls.item_count=x['item_count']
-                    production_dtls.sid=supplier.sid
-                    session.add(production_dtls)
+            raw_password = make_password(data[12])
+            user.user_id = user_id
+            user.user_type = 'supplier'
+            user.category_type = request.data['prod_type']
+            user.password = raw_password
+            user.email=data[11]
+            user.phone=data[9]
+            session.add(user)
+            supplier=SupplierTable()
+            supplier.user_id=user_id
+            supplier.supplier_name=data[0]
+            supplier.organization_name=data[2]
+            supplier.org_started_year=data[1]
+            supplier.prod_type=request.data['prod_type']
+            supplier.prod_sub_type=request.data['sub_type']
+            supplier.place=data[3]
+            supplier.state=data[4]
+            supplier.district=data[5]
+            supplier.pincode=data[6]
+            supplier.gst_number=data[7]
+            supplier.udayam_number=data[8]
+            supplier.phone_number=data[9]
+            supplier.alternate_number=data[10]
+            supplier.email=data[11]
+            if request.data['is_companydeler']=='Yes':
+                supplier.compnay_names=request.data['compnay_names']
+                supplier.is_companydeler='Yes'
+            else:
+                supplier.is_companydeler='No'
+
+
+            supplier.company_undertaking=request.data['company_undertaking']
+            supplier.no_labours=request.data['no_labours']
+            supplier.male_number=request.data['male_number']
+            supplier.female_number=request.data['female_number']
+            session.add(supplier)
+            session.flush()
+            for x in json.loads(order_lines):
+                production_dtls=SupplierProductionDtl()
+                production_dtls.item_name=x['item']
+                production_dtls.item_count=x['count']
+                production_dtls.sid=supplier.sid
+                session.add(production_dtls)
                 session.commit()
-            if request.data['prod_type']=='Ready Made Uniforms':
-                user_id = getUserId('RM')
-                otpParams ={
+            session.commit()
+        if request.data['prod_type']=='Ready Made Uniforms':
+            print("REady")
+            user_id = getUserId('RM')
+            otpParams ={
                 "user_id":user_id,
-                "email":email
+                "email":data[11]
                 }
-                emailResult=SendEmail(otpParams)
-                print(emailResult)
-                user = UsersDtl()
+            emailResult=SendEmail(otpParams)
+            print(emailResult)
+            user = UsersDtl()
 
-                raw_password = make_password(request.data['password'])
-                user.user_id = user_id
-                user.user_type = 'supplier'
-                user.category_type = request.data['prod_type']
-                user.password = raw_password
-                user.email=email
-                user.phone=phone
-                session.add(user)
-                supplier=SupplierTable()
-                supplier.user_id=user_id
-                supplier.supplier_name=request.data['supplier_name']
-                supplier.organization_name=request.data['organization_name']
-                supplier.org_started_year=request.data['org_started_year']
-                supplier.prod_type=request.data['prod_type']
-                supplier.place=request.data['place']
-                supplier.state=request.data['state']
-                supplier.district=request.data['district']
-                supplier.pincode=request.data['pincode']
-                supplier.gst_number=request.data['gst_number']
-                supplier.udayam_number=request.data['udayam_number']
-                supplier.phone_number=request.data['phone_number']
-                supplier.alternate_number=request.data['alternate_number']
-                supplier.email=request.data['email']
-                supplier.readymade_providng_items=request.data['readymade_providng_items']
-                
-                session.add(supplier)
-                session.commit()
-            if request.data['prod_type']=='Uniform Accessories':
-                user_id = getUserId('AS')
-                otpParams ={
-                "user_id":user_id,
-                "email":email
-                }
-                emailResult=SendEmail(otpParams)
-                print(emailResult)
-                user = UsersDtl()
+            raw_password = make_password(data[12])
+            user.user_id = user_id
+            user.user_type = 'supplier'
+            user.category_type = request.data['prod_type']
+            user.password = raw_password
+            user.email=data[11]
+            user.phone=data[9]
+            session.add(user)
+            supplier=SupplierTable()
+            supplier.user_id=user_id
+            supplier.supplier_name=data[0]
+            supplier.organization_name=data[2]
+            supplier.org_started_year=data[1]
+            supplier.prod_type=request.data['prod_type']
+            supplier.prod_sub_type=request.data['sub_type']
+            supplier.place=data[3]
+            supplier.state=data[4]
+            supplier.district=data[5]
+            supplier.pincode=data[6]
+            supplier.gst_number=data[7]
+            supplier.udayam_number=data[8]
+            supplier.phone_number=data[9]
+            supplier.alternate_number=data[10]
+            supplier.email=data[11]
+            supplier.readymade_providng_items=request.data['readymade_providng_items'] 
+            session.add(supplier)
+            session.commit()
+        if request.data['prod_type']=='Uniform Accessories':
+            user_id = getUserId('AS')
+            otpParams ={
+            "user_id":user_id,
+            "email":data[11]
+            }
+            emailResult=SendEmail(otpParams)
+            print(emailResult)
+            
+            user = UsersDtl()
 
-                raw_password = make_password(request.data['password'])
-                user.user_id = user_id
-                user.user_type = 'supplier'
-                user.category_type = request.data['prod_type']
-                user.password = raw_password
-                user.email=email
-                user.phone=phone
-                session.add(user)
-                supplier=SupplierTable()
-                supplier.user_id=user_id
-                supplier.supplier_name=request.data['supplier_name']
-                supplier.organization_name=request.data['organization_name']
-                supplier.org_started_year=request.data['org_started_year']
-                supplier.prod_type=request.data['prod_type']
-                supplier.place=request.data['place']
-                supplier.state=request.data['state']
-                supplier.district=request.data['district']
-                supplier.pincode=request.data['pincode']
-                supplier.gst_number=request.data['gst_number']
-                supplier.udayam_number=request.data['udayam_number']
-                supplier.phone_number=request.data['phone_number']
-                supplier.alternate_number=request.data['alternate_number']
-                supplier.email=request.data['email']
-                supplier.Providing_accesoseries=request.data['Providing_accesoseries']
-                session.add(supplier)
-                session.commit()
-
+            raw_password = make_password(data[12])
+            user.user_id = user_id
+            user.user_type = 'supplier'
+            user.category_type = request.data['prod_type']
+            user.password = raw_password
+            user.email=data[11]
+            user.phone=data[9]
+            session.add(user)
+            supplier=SupplierTable()
+            supplier.user_id=user_id
+            supplier.supplier_name=data[0]
+            supplier.organization_name=data[2]
+            supplier.org_started_year=data[1]
+            supplier.prod_type=request.data['prod_type']
+            supplier.prod_sub_type=request.data['sub_type']
+            supplier.place=data[3]
+            supplier.state=data[4]
+            supplier.district=data[5]
+            supplier.pincode=data[6]
+            supplier.gst_number=data[7]
+            supplier.udayam_number=data[8]
+            supplier.phone_number=data[9]
+            supplier.alternate_number=data[10]
+            supplier.email=data[11]
+            supplier.Providing_accesoseries=request.data['providing_accesoseries']
+            session.add(supplier)
+            session.commit()
                 
             if(emailResult == True):
                 session.commit()
                 session.close()
-                return Response({'response':'success'})
-            else:
-                session.rollback()
-                session.close()
-                return Response({'response':'Error occured'})
 
+        session.close()
+        return Response({'response': 'Data saved success fully'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
 
-
-            session.close()
-            return Response({'response': 'Data saved success fully'})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
-            
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
 def SaveSuppliertempdetails(request):
@@ -963,13 +978,14 @@ def SaveSuppliertempdetails(request):
         supplier.start_year=request.data['org_started_year']
         supplier.place=request.data['place']
         supplier.state=request.data['state']
-        supplier.district=request.data['district']
+        supplier.district=request.data['districtl']
         supplier.pincode=request.data['pincode']
         supplier.gst_number	=request.data['gst_number']
         supplier.udayam_number=request.data['udayam_number']
         supplier.phone_number=request.data['phone_number']
         supplier.alt_phone_number=request.data['alternate_number']
         supplier.email=request.data['email']
+        supplier.password=request.data['password']
         session.add(supplier)
         session.commit()
         tempID=session.query(SupplierTempDtl.temp_id).filter(SupplierTempDtl.temp_id==supplier.temp_id).one()
@@ -983,84 +999,376 @@ def SaveSuppliertempdetails(request):
         return Response({'response': 'Error occured'})
 
 
-class prod_dtls_save(APIView):
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            prod_id=request.data['prod_id']
-            if prod_id:
-                product=session.query(ProductDtl).filter(ProductDtl.prod_id==prod_id).one()
-            else:
-                product=ProductDtl()
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def prod_dtls_save(request):
+    try:
 
-            product.item_name=request.data['item_name']
-            product.item_code=request.data['item_code']
-            product.size=request.data['size']
-            product.image=request.data['image']
-            product.shades=request.data['shades']
-            product.price=request.data['price']
-            product.quantity=request.data['quantity']
-            product.status=request.data['status']
-            product.user_id=request.data['user_id']
-            product.prod_type=request.data['prod_type']
-            session.add(product)
+        print(request.data)
+        session = dbsession.Session()
+        prod_id=request.data['prod_id']
+        print(request.data.getlist('file')[0]=='undefined')
+        print(request.data.getlist('file')[0])
+        # if request.FILES['file']!='undefined':
+        #     myfile=request.FILES['file']
+        
+        if prod_id:
+            print(":=========")
+            product=session.query(ProductDtl).filter(ProductDtl.prod_id==prod_id).one()
+        else:
+            product=ProductDtl()
+
+        product.item_name=request.data['item_name']
+        product.item_code=request.data['item_code']
+        product.size=request.data['size']
+        if request.data.getlist('file')[0]!='undefined':
+            for f in request.data.getlist('file'):
+                fs=FileSystemStorage()
+                filename=fs.save(f.name,f)
+                uploaded_file_url = fs.url(filename)
+                product.image=uploaded_file_url
+        product.price=request.data['price']
+        product.quantity=request.data['quantity']
+        product.status=request.data['status']
+        product.user_id=request.data['user_id']
+        product.prod_type=request.data['prod_type']
+        product.prod_desc=request.data['prod_desc']
+        product.condition=request.data['condition']
+        product.shades=request.data['brand_name']
+        session.add(product)
+        session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def delete_prod_dtls(request):
+    try:
+        session = dbsession.Session()
+        prod_id=request.data['prod_id']
+        if prod_id:
+            product=session.query(ProductDtl).filter(ProductDtl.prod_id==prod_id).delete()
             session.commit()
             session.close()
             return Response({'response': 'success'})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
 
-class delete_prod_dtls(APIView):
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            prod_id=request.data['prod_id']
-            if prod_id:
-                product=session.query(ProductDtl).filter(ProductDtl.prod_id==prod_id).delete()
-                session.commit()
-                session.close()
-                return Response({'response': 'success'})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
+# class getlabours_technisions_list(APIView):
+#     def post(self, request):
+#         try:
+#             session = dbsession.Session()
+#             sql = text('SELECT * from labors_technisions')
+#             prod_list = session.execute(sql).fetchall()
+#             product_dtls_list = [dict(row) for row in prod_list]
+#             session.commit()
+#             session.close()
+#             return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+#         except SQLAlchemyError as e:
+#             print(e)
+#             session.rollback()
+#             session.close()
+#             return Response({'response': 'Error occured'})
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getlabours_technisions_list(request):
+    try:
+        session = dbsession.Session()
+        sql = text('SELECT * from labors_technisions')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.commit()
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
 
-class getlabours_technisions_list(APIView):
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            sql = text('SELECT * from labors_technisions')
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getmachneries_spareparts_list(request):
+    try:
+        session = dbsession.Session()
+        sql = text('SELECT * from machines_spareparts')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+
+
+
+
+
+
+
+
+# class getmachneries_spareparts_list(APIView):
+#     permission_classes = (IsAuthenticated, )
+#     authentication_classes = (TokenAuthentication, )
+#     def post(self, request):
+#         try:
+#             session = dbsession.Session()
+#             sql = text('SELECT * from machines_spareparts')
+#             prod_list = session.execute(sql).fetchall()
+#             product_dtls_list = [dict(row) for row in prod_list]
+#             session.close()
+#             return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+#         except SQLAlchemyError as e:
+#             print(e)
+#             session.rollback()
+#             session.close()
+#             return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def get_prod_list(request):
+    try:
+        print(request)
+        prod_type=request.data['prod_type']
+        user_id=request.data['user_id']
+        session = dbsession.Session()
+        sql = text('SELECT * from product_dtls where user_id="'+user_id+'" and prod_type="'+prod_type+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def prod_list_byid(request):
+    try:
+        print(request)
+        prod_id=request.data['prod_id']
+        user_id=request.data['user_id']
+        session = dbsession.Session()
+        if user_id:
+            sql = text('SELECT * from product_dtls where user_id="'+user_id+'" and prod_id="'+prod_id+'"')
             prod_list = session.execute(sql).fetchall()
             product_dtls_list = [dict(row) for row in prod_list]
-            session.commit()
             session.close()
-            return Response({'response': 'success',"product_dtls_list":product_dtls_list})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
-
-class getmachneries_spareparts_list(APIView):
-    permission_classes = (IsAuthenticated, )
-    authentication_classes = (TokenAuthentication, )
-    def post(self, request):
-        try:
-            session = dbsession.Session()
-            sql = text('SELECT * from machines_spareparts')
+        else:
+            sql = text('SELECT * from product_dtls where prod_id="'+prod_id+'"')
             prod_list = session.execute(sql).fetchall()
             product_dtls_list = [dict(row) for row in prod_list]
             session.close()
-            return Response({'response': 'success',"product_dtls_list":product_dtls_list})
-        except SQLAlchemyError as e:
-            print(e)
-            session.rollback()
-            session.close()
-            return Response({'response': 'Error occured'})
+
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def supplier_list(request):
+    try:
+        session = dbsession.Session()
+        user_id = request.data['user_id']
+        sql = text('SELECT email,phone_number,prod_type,prod_sub_type from supplier_table where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def productSupplideerlst(request):
+    try:
+        session = dbsession.Session()
+        order_id=request.data['order_id']
+       
+        sql = text('SELECT * from customer_order_dtls where order_id="'+order_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def customer_requirements(request):
+    try:
+        session = dbsession.Session()
+        order_id=request.data['order_id']
+       
+        sql = text('SELECT * from customer_add_product_dtls where order_id="'+order_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def prod_list_cat(request):
+    session = dbsession.Session()
+    user_id = request.GET.get('user_id') 
+    try:
+        session = dbsession.Session()
+        # sql = text('SELECT * from product_dtls')
+        # prod_list = session.execute(sql).fetchall()
+        # product_dtls_list = [dict(row) for row in prod_list]
+
+        # sql = text('SELECT * from supplier_table')
+        # supplier_list = session.execute(sql).fetchall()
+        # supplier_details_list = [dict(row) for row in supplier_list]
+        # session.close()
+
+
+        # session.close()
+        # return Response({'response': 'success',"product_dtls_list":product_dtls_list,"supplier_details_list":supplier_details_list})
+        columns =['organization_name','place','state','district','phone_number','item_name','image','price','status','prod_type','prod_id']
+        cart_list = session.query(SupplierTable.organization_name, SupplierTable.place,SupplierTable.state,SupplierTable.district,SupplierTable.phone_number,ProductDtl.item_name,ProductDtl.image,ProductDtl.price,ProductDtl.status,ProductDtl.prod_type,ProductDtl.prod_id).join(ProductDtl, SupplierTable.user_id == ProductDtl.user_id).all()
+        print(cart_list)
+        cart_list = json.dumps(cart_list, cls=AlchemyEncoder)
+        cart_list = pd.read_json(cart_list)
+        if columns:
+            cart_list.columns = columns
+            cart_list = cart_list.to_json(orient='records')
+        
+        session.close()
+        return Response({'response': 'Success', 'cart_list': json.loads(cart_list)})
+    except SQLAlchemyError as e:
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def orders_enquiries(request):
+    try:
+        # product_type=request.data['product_type']
+        # prod_sub_type=request.data['prod_sub_type']
+        session = dbsession.Session()
+        sql = text("SELECT * from customer_order_dtls where product_type NOT IN('ReadyMade Uniforms')")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def users_list(request):
+    try:
+        # product_type=request.data['product_type']
+        # prod_sub_type=request.data['prod_sub_type']
+        session = dbsession.Session()
+        sql = text("SELECT * from users_dtls where status IS  NULL and user_type='supplier'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def supplier_details(request):
+    try:
+        # product_type=request.data['product_type']
+        # prod_sub_type=request.data['prod_sub_type']
+        user_id = request.data['user_id']
+        session = dbsession.Session()
+        sql = text('SELECT * from supplier_table where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+def SendConform(params):
+    
+    ctx={
+        'OTP':params['user_id']
+    }
+    plaintext = get_template('mail.txt')
+    htmly     = get_template('conform.html')
+    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    text_content = plaintext.render(ctx)
+    html_content = htmly.render(ctx)
+    msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
+    msg.attach_alternative(html_content, "text/html")
+    res=msg.send(fail_silently=False)
+    
+    if(res==1):
+        return True
+    else:
+        return False
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def accept_supplier(request):
+    try:
+        # product_type=request.data['product_type']
+        # prod_sub_type=request.data['prod_sub_type']
+        user_id = request.data['user_id']
+        print(user_id)
+        session = dbsession.Session()
+        email=session.query(UsersDtl.email,UsersDtl.user_id).filter(UsersDtl.user_id==user_id).one()
+        print(email[0])
+        params={
+            "email":email[0],
+            "user_id":user_id
+        }
+        emailresult=SendConform(params)
+        session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update({'status':'login'})
+        session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
 
 
 

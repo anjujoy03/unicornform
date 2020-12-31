@@ -99,6 +99,7 @@ class LaborsTechnision(Base):
     alternate_number = Column(String(45))
     work_type = Column(String(45), nullable=False)
     status = Column(String(45), nullable=False)
+    email = Column(String(45))
 
 class MachinesSparepart(Base):
     __tablename__ = 'machines_spareparts'
@@ -160,18 +161,19 @@ class SupplierTempDtl(Base):
     __tablename__ = 'supplier_temp_dtls'
 
     temp_id = Column(INTEGER(11), primary_key=True)
-    name = Column(String(45), nullable=False)
-    comapny_name = Column(String(200), nullable=False)
-    start_year = Column(DateTime, nullable=False)
-    place = Column(String(45), nullable=False)
-    state = Column(String(45), nullable=False)
-    district = Column(String(45), nullable=False)
-    pincode = Column(String(15), nullable=False)
-    gst_number = Column(String(20), nullable=False)
-    udayam_number = Column(String(20), nullable=False)
-    phone_number = Column(String(20), nullable=False)
-    alt_phone_number = Column(String(20), nullable=False)
-    email = Column(String(20), nullable=False)
+    name = Column(String(45))
+    comapny_name = Column(String(200))
+    start_year = Column(DateTime)
+    place = Column(String(45))
+    state = Column(String(45))
+    district = Column(String(45))
+    pincode = Column(String(15))
+    gst_number = Column(String(20))
+    udayam_number = Column(String(20))
+    phone_number = Column(String(20))
+    alt_phone_number = Column(String(20))
+    email = Column(String(100))
+    password = Column(String(150))
 
 class ProductDtl(Base):
     __tablename__ = 'product_dtls'
@@ -187,6 +189,9 @@ class ProductDtl(Base):
     status = Column(String(45))
     user_id = Column(String(45))
     prod_type = Column(String(45))
+    prod_desc = Column(String(600))
+    condition = Column(String(45))
+
 
 
 class AuthToken(Base):
