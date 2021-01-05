@@ -31,6 +31,12 @@ urlpatterns = [
   path('users_list',views.users_list,name='users_list'),
   path('supplier_details',views.supplier_details,name='supplier_details'),
   path('accept_supplier',views.accept_supplier,name='accept_supplier'),
+  path('getProfile',views.getProfile,name='getProfile'),
+  path('mail',views.Email,name='mail'),
+
+  
+
+  
 
   
 

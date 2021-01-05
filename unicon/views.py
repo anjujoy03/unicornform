@@ -96,7 +96,7 @@ def SendEmail(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('mail.html')
-    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1332,7 +1332,7 @@ def SendConform(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('conform.html')
-    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1363,6 +1363,79 @@ def accept_supplier(request):
         session.commit()
         session.close()
         return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getProfile(request):
+    try:
+        # product_type=request.data['product_type']
+        # prod_sub_type=request.data['prod_sub_type']
+        user_id = request.data['user_id']
+        print(user_id)
+        session = dbsession.Session()
+        email=session.query(UsersDtl.user_id,UsersDtl.phone).filter(UsersDtl.user_id==user_id).one()
+        print(email)
+        session.commit()
+        session.close()
+        return Response({'response': 'success','phone_no':email[1],'user_id':email[0]})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+def SendEmail(params):
+    
+    ctx={
+        'OTP':params['user_id']
+    }
+    plaintext = get_template('mail.txt')
+    htmly     = get_template('mail.html')
+    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
+    text_content = plaintext.render(ctx)
+    html_content = htmly.render(ctx)
+    msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
+    msg.attach_alternative(html_content, "text/html")
+    res=msg.send(fail_silently=False)
+    
+    if(res==1):
+        return True
+    else:
+        return False
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def Email(request):
+    try:
+        ctx={
+        'PhoneNumber':request.data['phone_numer'],
+        'Message':request.data['message'],
+        'CompanyName':request.data['org_name'],
+        'Name':request.data['name']
+        }
+        plaintext = get_template('mail.txt')
+        htmly     = get_template('contact.html')
+        subject, from_email, to = request.data['subject'], 'uniconform1@gmail.com', request.data['email']
+        text_content = plaintext.render(ctx)
+        html_content = htmly.render(ctx)
+        msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
+        msg.attach_alternative(html_content, "text/html")
+        res=msg.send(fail_silently=False)
+        if(res==1):
+            return True
+        else:
+            return False
+   
+        session.commit()
+        session.close()
+        return Response({'response': 'success','phone_no':email[1],'user_id':email[0]})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
