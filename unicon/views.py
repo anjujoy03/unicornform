@@ -23,7 +23,7 @@ from django.core.mail import send_mail
 
 from rest_framework import status
 from django.template.loader import render_to_string
-from unicon.models import UsersDtl,CustomerDtl,SupplierTable,LaborsTechnision,MachinesSparepart,CustomerOrderDtl,CustomerAddProductDtl,CategoryDtl,SupplierTempDtl,SupplierProductionDtl,ProductDtl,AuthToken
+from unicon.models import UsersDtl,CustomerDtl,SupplierTable,LaborsTechnision,MachinesSparepart,CustomerOrderDtl,CustomerAddProductDtl,CategoryDtl,SupplierTempDtl,SupplierProductionDtl,ProductDtl,AuthToken,QuotationTable,QutationDtl
 import pandas as pd
 from uniconform.sqlalchamyencoder import AlchemyEncoder
 from uniconform import dbsession
@@ -47,16 +47,16 @@ from django.core.files.storage import FileSystemStorage
 
 
 
-@api_view(['GET','POST'])
-@permission_classes([AllowAny, ])
-def csrftokens(request):
-	try:
+# @api_view(['GET','POST'])
+# @permission_classes([AllowAny, ])
+# def csrftokens(request):
+# 	try:
 	
-		csrf = get_token(request) 
-		return Response({'csrf_token':csrf})
-	except KeyError:
-		res = {'error': 'token not generated'}
-		return Response(res)
+# 		csrf = get_token(request) 
+# 		return Response({'csrf_token':csrf})
+# 	except KeyError:
+# 		res = {'error': 'token not generated'}
+# 		return Response(res)
 
 def generateUserId(email_txt):
 	number = '{:06d}'.format(random.randrange (1,999)) 
@@ -96,7 +96,7 @@ def SendEmail(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('mail.html')
-    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -152,6 +152,7 @@ def SaveCustomer(request):
         customer.state=request.data['state']
         customer.districtl=request.data['districtl']
         customer.pincode=request.data['pincode']
+        customer.email=request.data['email']
         customer.phone_number=request.data['phone_number']
         customer.alternative_number=request.data['alternative_number']
         session.add(customer)
@@ -247,22 +248,22 @@ def Authenticate(request):
             return Response({'response': 'Error','message':'Please provide a valid user name'})
         user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id,UsersDtl.status=='login').one()
         if user.check_password(password):
-            DateEncoder = JSONDateEncoder()
-            payload = {
-                'user_id': user.user_id,
-				'expiry' : DateEncoder.default(datetime.date.today() + datetime.timedelta(days=1))
-				}
-            token = jwt.encode(payload, settings.SECRET_KEY)
-            print(token)
-            session.query(AuthToken).filter_by(user_id=user.user_id).delete()
-            auth_token = AuthToken()
-            auth_token.key = token
-            auth_token.created = datetime.datetime.now()
-            auth_token.user_id = user.user_id
-            session.add(auth_token)
+            # DateEncoder = JSONDateEncoder()
+            # payload = {
+            #     'user_id': user.user_id,
+			# 	'expiry' : DateEncoder.default(datetime.date.today() + datetime.timedelta(days=1))
+			# 	}
+            # token = jwt.encode(payload, settings.SECRET_KEY)
+            # print(token)
+            # session.query(AuthToken).filter_by(user_id=user.user_id).delete()
+            # auth_token = AuthToken()
+            # auth_token.key = token
+            # auth_token.created = datetime.datetime.now()
+            # auth_token.user_id = user.user_id
+            # session.add(auth_token)
             session.commit()
             user_details = {}
-            user_details['token'] = token
+            # user_details['token'] = token
             customer_dtls=session.query(UsersDtl.user_type,UsersDtl.user_id).filter(UsersDtl.user_id==user_id).all()
             customer_dtls_list = json.loads(json.dumps(customer_dtls, cls=AlchemyEncoder))
             user_details['data'] = customer_dtls_list
@@ -323,7 +324,7 @@ def AddCustomerordes(request):
         user_id = request.data['user_id']
         
         product_type=request.data['product_type']
-        if request.data['product_type']=="Customized Uniforms " and request.data['prod_sub_type']=="Fabrics":
+        if request.data['product_type']=="Customized Uniforms" and request.data['prod_sub_type']=="Fabrics":
             print("================02200")
             sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"PF",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
             auto_order_id = session.execute(sql).fetchall()
@@ -618,7 +619,7 @@ def SaveMachiners(request):
         user = UsersDtl()
         raw_password = make_password(request.data['password'])
         user.user_id = user_id
-        user.user_type = 'Machinary and Spareparts'
+        user.user_type = 'supplier'
         user.category_type = 'MA'
         user.password = raw_password
         user.email=email
@@ -1204,8 +1205,9 @@ def productSupplideerlst(request):
     try:
         session = dbsession.Session()
         order_id=request.data['order_id']
+        sub_type=request.data['type']
        
-        sql = text('SELECT * from customer_order_dtls where order_id="'+order_id+'"')
+        sql = text('SELECT * from customer_order_dtls where order_id="'+order_id+'" and prod_sub_type="'+sub_type+'"' )
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1270,6 +1272,10 @@ def prod_list_cat(request):
         session.close()
         return Response({'response': 'Error occured'})
 
+
+
+
+
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
 def orders_enquiries(request):
@@ -1277,11 +1283,14 @@ def orders_enquiries(request):
         # product_type=request.data['product_type']
         # prod_sub_type=request.data['prod_sub_type']
         session = dbsession.Session()
-        sql = text("SELECT * from customer_order_dtls where product_type NOT IN('ReadyMade Uniforms')")
+        sql = text("select customer_dtls.user_id,customer_dtls.pincode,customer_order_dtls.order_id,customer_order_dtls.product_type, customer_order_dtls.category_type,customer_order_dtls.prod_sub_type,customer_order_dtls.photo,customer_order_dtls.delivery_date from  customer_order_dtls join customer_dtls on customer_order_dtls.user_id=customer_dtls.user_id  where product_type NOT IN('ReadyMade Uniforms')")
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
+        sql = text("SELECT * from customer_dtls")
+        cust_list = session.execute(sql).fetchall()
+        cust_dtls_list = [dict(row) for row in cust_list]
         session.close()
-        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"cust_dtls_list":cust_dtls_list})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
@@ -1332,7 +1341,7 @@ def SendConform(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('conform.html')
-    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1397,7 +1406,7 @@ def SendEmail(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('mail.html')
-    subject, from_email, to = 'Hello from Uniconform', 'uniconform1@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1422,7 +1431,7 @@ def Email(request):
         }
         plaintext = get_template('mail.txt')
         htmly     = get_template('contact.html')
-        subject, from_email, to = request.data['subject'], 'uniconform1@gmail.com', request.data['email']
+        subject, from_email, to = request.data['subject'], 'anjujoy0310@gmail.com', request.data['email']
         text_content = plaintext.render(ctx)
         html_content = htmly.render(ctx)
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1441,6 +1450,272 @@ def Email(request):
         session.rollback()
         session.close()
         return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def Edit_profile(request):
+    try:
+        user_id = request.data['user_id']
+        session = dbsession.Session()
+        sql = text('SELECT * from users_dtls where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def save_profile(request):
+    try:
+        session = dbsession.Session()
+        user_id = request.data['user_id']
+        if usid:
+            user=session.query(UsersDtl).filter(UsersDtl.usid==UsersDtl).one()
+        else:
+            user = UsersDtl()
+        
+        user.user_id=request.data['user_id']
+        user.email=request.data['email']
+        user.phone=request.data['phone']
+        session.add()
+        session.commit()
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def quotaton_form(request):
+    try:
+        session = dbsession.Session()
+        user_id = request.data['user_id']
+
+        order=QuotationTable()
+        order.order_form_id=request.data['order_id']
+        order.user_id=request.data['user_id']
+        order.supplier_id=request.data['customer_id']
+        order.total_amount=request.data['total_amount']
+        order.grand_total=request.data['grand_total']
+        order.quatation_form_id=getUserId(request.data['type'])
+        order.category_type=request.data['model_type']
+        order.prod_sub_type=request.data['prod_sub_type']
+        order.prod_type=request.data['product_type']
+        session.add(order)
+        session.flush()
+        for x in json.loads(request.data['order_lines']):
+            addprod=QutationDtl()
+            addprod.qutation_id=order.quotatit_id
+            addprod.qutation_form_id=order.quatation_form_id
+            addprod.item_name=x['item']
+            addprod.count=x['count']
+            addprod.rate_per_item=x['rate_per_meter']
+            session.add(addprod)
+
+        session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def quote_list(request):
+    try:
+        user_id = request.data['user_id']
+        session = dbsession.Session()
+        sql = text('select quotation_table.quotatit_id, quotation_table.order_form_id,quotation_table.user_id,quotation_table.supplier_id,quotation_table.grand_total,quotation_table.quatation_form_id,quotation_table.is_order_accepted,quotation_table.prod_type,quotation_table.prod_sub_type from quotation_table join qutation_dtls on quotation_table.quotatit_id=qutation_dtls.qutation_id where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def get_qouteditem(request):
+    try:
+        user_id = request.data['user_id']
+        quote_id = request.data['quote_id']
+        session = dbsession.Session()
+        sql = text('SELECT * FROM quotation_table where quatation_form_id="'+quote_id+'" and user_id="'+user_id+'" ')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('SELECT * FROM qutation_dtls where qutation_form_id="'+quote_id+'"')
+        quote_list = session.execute(sql).fetchall()
+        quote_dtls_list = [dict(row) for row in quote_list]
+        print(quote_dtls_list)
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"quote_dtls_list":quote_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def update_quotes(request):
+    try:
+        user_id = request.data['user_id']
+        quote_id = request.data['quote_id']
+        order_status=request.data['order_status']
+        session = dbsession.Session()
+        session.query(QuotationTable).filter(QuotationTable.quatation_form_id==quote_id,QuotationTable.user_id==user_id).update({'is_order_accepted':order_status})
+        session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def buyers_list(request):
+    try:
+        
+        session = dbsession.Session()
+        sql = text('SELECT * FROM customer_dtls')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def customer_details(request):
+    try:
+        user_id=request.data['user_id']
+        session = dbsession.Session()
+        sql = text('SELECT * FROM customer_dtls where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+        
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def all_supplier_list(request):
+    try:
+        session = dbsession.Session()
+        sql = text('SELECT * FROM supplier_table')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def order_details(request):
+    try:
+        session = dbsession.Session()
+        sql = text('SELECT * FROM customer_order_dtls')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def all_quote_list(request):
+    try:
+        session = dbsession.Session()
+        sql = text("select * from quotation_table where is_order_accepted='Accepted by supplier'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def quote_list_by_id(request):
+    try:
+        user_id = request.data['user_id']
+        session = dbsession.Session()
+        sql = text("select * from quotation_table where  is_order_accepted='Accepted Proposal' and supplier_id='"+user_id+"'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def pincode(request):
+    try:
+        session = dbsession.Session()
+        sql = text(' select pincode from supplier_table')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+        
+
+
+
+        
+
+
+
+
+
 
 
 
