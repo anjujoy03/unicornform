@@ -20,6 +20,9 @@ class UsersDtl(Base):
     status = Column(String(45))
     email = Column(String(120))
     phone = Column(String(45))
+    otp_cre_time = Column(DateTime)
+    otp_exp_time = Column(DateTime)
+    otp_val = Column(String(45))
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
     def is_authenticated():
@@ -40,8 +43,10 @@ class CustomerDtl(Base):
     districtl = Column(String(45))
     pincode = Column(String(45))
     phone_number = Column(String(45))
-    prouduct_type = Column(String(45), comment='cousomized/readymade/accessories')
+    cretiime = Column(DateTime, comment='cousomized/readymade/accessories')
     alternative_number = Column(String(45))
+    email = Column(String(45))
+    activity = Column(String(45))
 
 class SupplierTable(Base):
     __tablename__ = 'supplier_table'
@@ -141,14 +146,6 @@ class CustomerOrderDtl(Base):
     id = Column(INTEGER(11), primary_key=True)
 
 
-class CustomerAddProductDtl(Base):
-    __tablename__ = 'customer_add_product_dtls'
-
-    prod_id = Column(INTEGER(11), primary_key=True)
-    order_id = Column(String(45))
-    name = Column(String(45))
-    size = Column(String(45))
-    user_id = Column(String(45))
 
 class CategoryDtl(Base):
     __tablename__ = 'category_dtls'
@@ -191,6 +188,7 @@ class ProductDtl(Base):
     prod_type = Column(String(45))
     prod_desc = Column(String(600))
     condition = Column(String(45))
+    careted_time = Column(DateTime)
 
 
 
@@ -201,3 +199,54 @@ class AuthToken(Base):
     key = Column(String(600))
     created = Column(String(45))
     user_id = Column(String(45))
+
+
+class QuotationTable(Base):
+    __tablename__ = 'quotation_table'
+
+    quotatit_id = Column(INTEGER(11), primary_key=True)
+    order_form_id = Column(String(45))
+    user_id = Column(String(45))
+    supplier_id = Column(String(45))
+    total_amount = Column(String(45))
+    grand_total = Column(String(45))
+    is_order_accepted = Column(String(45))
+    quatation_form_id = Column(String(45))
+    category_type = Column(String(600))
+    prod_type = Column(String(45))
+    prod_sub_type = Column(String(45))
+    expiry_date = Column(String(45))
+
+class QutationDtl(Base):
+    __tablename__ = 'qutation_dtls'
+
+    quotationdetails_id = Column(INTEGER(11), primary_key=True)
+    qutation_id = Column(String(45))
+    qutation_form_id = Column(String(45))
+    item_name = Column(String(45))
+    count = Column(String(45))
+    rate_per_item = Column(String(45))
+    total__amt = Column(String(45))
+
+class CustomerAddProductDtl(Base):
+    __tablename__ = 'customer_add_product_dtls'
+
+    prod_id = Column(INTEGER(11), primary_key=True)
+    order_id = Column(String(45))
+    name = Column(String(45))
+    size = Column(String(45))
+    user_id = Column(String(45))
+    brand_name = Column(String(45))
+    design_number = Column(String(45))
+    shade_number = Column(String(45))
+    catalogue_number = Column(String(45))
+    avail_size = Column(String(45))
+
+
+class BannerTable(Base):
+    __tablename__ = 'banner_table'
+
+    banner_id = Column(INTEGER(11), primary_key=True)
+    banner_name = Column(String(45))
+    banner_type = Column(String(45))
+    banner_path = Column(String(200))

@@ -23,7 +23,7 @@ from django.core.mail import send_mail
 
 from rest_framework import status
 from django.template.loader import render_to_string
-from unicon.models import UsersDtl,CustomerDtl,SupplierTable,LaborsTechnision,MachinesSparepart,CustomerOrderDtl,CustomerAddProductDtl,CategoryDtl,SupplierTempDtl,SupplierProductionDtl,ProductDtl,AuthToken,QuotationTable,QutationDtl
+from unicon.models import UsersDtl,CustomerDtl,SupplierTable,LaborsTechnision,MachinesSparepart,CustomerOrderDtl,CustomerAddProductDtl,CategoryDtl,SupplierTempDtl,SupplierProductionDtl,ProductDtl,AuthToken,QuotationTable,QutationDtl,BannerTable
 import pandas as pd
 from uniconform.sqlalchamyencoder import AlchemyEncoder
 from uniconform import dbsession
@@ -43,6 +43,17 @@ from django.middleware.csrf import get_token
 from uniconform.JSONDateSerializer import JSONDateEncoder
 from uniconform.restframeworkTokenAuthentication import TokenAuthentication
 from django.core.files.storage import FileSystemStorage
+import requests
+from django.template.loader import get_template
+from django.core.mail import EmailMultiAlternatives
+import weasyprint
+from io import BytesIO
+import boto3
+import logging
+import time
+from botocore.exceptions import ClientError
+from uniconform.simpleSms import SnsWrapper
+
 
 
 
@@ -96,7 +107,7 @@ def SendEmail(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('mail.html')
-    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'admin@uniconform.in', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -107,6 +118,130 @@ def SendEmail(params):
         return True
     else:
         return False
+
+
+def Sms(params):
+
+    # SMS=SnsWrapper.publish_text_message('',"+91"+params['rece_mobile_no'],params['otp_val']+'is Your verification code for Uniconform')
+    # print(SMS)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    session = boto3.Session(
+    region_name="us-east-2"
+    )
+    sns_client = session.client('sns',
+    aws_access_key_id = "AKIAWUJKMYVN32GPHB5V",
+    aws_secret_access_key = "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",
+    region_name = "us-east-2"
+    )
+    response = sns_client.publish(
+        PhoneNumber="+91 7012433842",
+        Message='Hi there! This is a test message sent with Amazon SNS',
+        MessageAttributes={
+            'AWS.SNS.SMS.SenderID': {
+                'DataType': 'String',
+                'StringValue': 'SENDERID'
+            },
+            'AWS.SNS.SMS.SMSType': {
+                'DataType': 'String',
+                'StringValue': 'Promotional'
+            }
+        }
+    )
+    logger.info(response)
+    print(response)
+    return 'OK'
+
+
+    
+    
+#     SENDER_ID = "UNIFORM"
+#     SMS_MOBILE = "+91"+params['rece_mobile_no']
+#     SMS_MESSAGE = params['otp_val']+'is Your verification code for Uniconform'
+#     client = boto3.client(
+#         "sns",
+#         aws_access_key_id=AWS_ACCESS_KEY_ID,
+#         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+#         region_name=AWS_REGION_NAME
+#         )
+#     response = client.publish(
+#     PhoneNumber=SMS_MOBILE,
+#     Message=SMS_MESSAGE,
+#     MessageAttributes={
+#         'string': {
+#             'DataType': 'String',
+#             'StringValue': 'String',
+#         },
+#         'AWS.SNS.SMS.SenderID': {
+#             'DataType': 'String',
+#             'StringValue': SENDER_ID
+#         }
+#     }
+# )
+
+#     print(response)
+#     print("MessageId:" + response["MessageId"])
+#     print("HTTPStatusCode:" + str(response["ResponseMetadata"]["HTTPStatusCode"]))
+
+
+
+    # some_list_of_contacts['91+701233842']
+    
+    # client = boto3.client(
+    # "sns",
+    # aws_access_key_id="YOUR ACCES KEY",
+    # aws_secret_access_key="YOUR SECRET KEY",
+    # region_name=us-east-1
+    # )
+    # topic = client.create_topic(Name="notifications")
+    # topic_arn = topic['TopicArn']  # get its Amazon Resource Name
+    # for number in some_list_of_contacts:
+    #     client.subscribe(
+    #     TopicArn=topic_arn,
+    #     Protocol='sms',
+    #     Endpoint=number  
+    #    )
+    # client.publish(Message="Good news everyone!", TopicArn=topic_arn)
+
+# Publish a message.
+
+    # print("========233455")
+    # client = boto3.client(
+    #     "sns",
+    #     aws_access_key_id="AKIAWUJKMYVN32GPHB5V",
+    #     aws_secret_access_key="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",
+    #     region_name="us-east-2"
+    # )
+    # status=client.publish(
+    # PhoneNumber="+917012433842",
+    # Message="This is Amazon SNS service talking"
+    # )
+    # print("+91"+params['rece_mobile_no'])
+    # print(status)
+    # return True
+
+  
+
+    # API_ENDPOINT = "http://sms.sangamamonline.in/httpapi/smsapi"
+    # data={
+    #     'uname':'uniconsms',
+    #     'password':'sms10t44',
+    #     'sender':'UNIFOM',
+    #     'receiver':params['rece_mobile_no'],
+    #     'route':'TA',
+    #     'msgtype':'1',
+    #     'sms':params['otp_val']+'is Your verification code for Uniconform'
+    # }
+    # status = requests.get(url = API_ENDPOINT, params=data)
+    # print(status)
+    # return True
+
+
+
+
+
+
+
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
@@ -122,13 +257,17 @@ def SaveCustomer(request):
             # if(len(email_check) > 0):
             #     return Response({'status': 'email  exists','message':'email already exists'})
 
-        user_id = getUserId(request.data['category_type'])
+        user_id = getUserId(request.data['model_type'])
+        print(user_id)
         otpParams ={
                 "user_id":user_id,
                 "email":email
                 }
-        emailResult=SendEmail(otpParams)
-        print(emailResult)
+        #emailResult=SendEmail(otpParams)
+        otp_cre_time = datetime.datetime.now().replace(microsecond=0)
+        otp_expire_time = otp_cre_time+datetime.timedelta(minutes = 5)
+       
+
            
 
         user = UsersDtl()
@@ -136,7 +275,7 @@ def SaveCustomer(request):
         raw_password = make_password(request.data['password'])
         user.user_id = user_id
         user.user_type = 'Buyer'
-        user.category_type = request.data['category_type']
+        user.category_type = request.data['model_type']
         user.password = raw_password
         user.email=email
         user.phone=phone
@@ -157,71 +296,41 @@ def SaveCustomer(request):
         customer.alternative_number=request.data['alternative_number']
         session.add(customer)
         session.commit()
-            # if request.data['user_type']=='uniform' and request.data['category_type']=='supplier':
-            #     supplier=SupplierTable()
-            #     supplier.user_id=user_id
-            #     supplier.supplier_name=request.data['supplier_name']
-            #     supplier.organization_name=request.data['organization_name']
-            #     supplier.org_started_year=request.data['org_started_year']
-            #     supplier.place=request.data['place']
-            #     supplier.state=request.data['state']
-            #     supplier.district=request.data['district']
-            #     supplier.pincode=request.data['pincode']
-            #     supplier.gst_number=request.data['gst_number']
-            #     supplier.udayam_number=request.data['udayam_number']
-            #     supplier.phone_number=request.data['phone_number']
-            #     supplier.alternate_number=request.data['alternate_number']
-            #     supplier.email=request.data['email']
-            #     session.add(supplier)
-            #     session.commit()
-            # if request.data['user_type']=='other' and request.data['category_type']=='Machines':
-            #     machine=MachinesSparepart()
-            #     machine.user_id=user_id
-            #     machine.customer_name=request.data['customer_name']
-            #     machine.designation=request.data['designation']
-            #     machine.adress=request.data['adress']
-            #     machine.place=request.data['place']
-            #     machine.state=request.data['state']
-            #     machine.districtl=request.data['districtl']
-            #     machine.pincode=request.data['pincode']
-            #     machine.email=request.data['email']
-            #     machine.phone=request.data['phone_number']
-            #     machine.alternate_number=request.data['alternate_number']
-            #     machine.org_name=request.data['org_name']
-            #     session.add(machine)
-            #     session.commit()
-            # if request.data['user_type']=='other' and request.data['category_type']=='Labours':
-            #     labors=LaborsTechnision()
-            #     labors.cutsomer_name=request.data['customer_name']
-            #     labors.user_id=user_id
-            #     labors.gender=request.data['gender']
-            #     labors.place=request.data['place']
-            #     labors.state=request.data['state']
-            #     labors.district=request.data['district']
-            #     labors.pincode=request.data['pincode']
-            #     labors.phone=request.data['phone_number']
-            #     labors.alternate_number=request.data['alternate_number']
-            #     session.add(labors)
-            #     session.commit()
-        
-        if(emailResult == True):
-            session.commit()
-            session.close()
-            return Response({'response':'success'})
-        else:
-            session.rollback()
-            session.close()
-            return Response({'response':'Error occured'})
+        OTP = generateRandomOTP()
+        params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+        otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+        session.commit()
+        otpsParams = {
+			"otp_val": OTP , 
+			"rece_mobile_no":phone,
+            
+		}
+        message=Sms(otpsParams)
 
-
+        sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
 
         session.close()
-        return Response({'response': 'Data saved success fully'})
+        return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
         session.close()
         return Response({'response': 'Error occured'})
+
+
+
+def generateRandomOTP():
+	digits = "0123456789"
+	OTP = ""
+	for i in range(6) : 
+		OTP += digits[math.floor(random.random() * 10)] 
+	return OTP
+
+
+
+
 
 def get_user(user_id):
     try:
@@ -233,6 +342,26 @@ def get_user(user_id):
         return None
     return user_data
 
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def verifyOTP(request):
+    session = dbsession.Session()
+    try:
+        user_id = request.data['user_id'] if request.data['user_id'] else None
+        otp_val = request.data['otp_val'] if request.data['otp_val'] else None
+        user=session.query(UsersDtl).filter(UsersDtl.otp_val == otp_val,UsersDtl.user_id==user_id).one()
+        db_otp=user.otp_val
+        if otp_val!=db_otp:
+            print("============")
+            return Response({'response':'failed','message':'otp not matched'})
+        if otp_val==db_otp:
+            print("============1")
+            return Response({'response':'success','message':'otp verfiled succesfull'})
+    except SQLAlchemyError as e:
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
@@ -322,43 +451,41 @@ def AddCustomerordes(request):
     try:
         session = dbsession.Session()
         user_id = request.data['user_id']
+        print("============addcustoomerorders")
         
         product_type=request.data['product_type']
         if request.data['product_type']=="Customized Uniforms" and request.data['prod_sub_type']=="Fabrics":
-            print("================02200")
             sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"PF",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
             auto_order_id = session.execute(sql).fetchall()
             order_id = auto_order_id[0][0]
             if order_id == None or order_id == 0 :
                 order_id = 100000
             order_id = 'PF'+ str(int(order_id + 1))
-            myfile=request.FILES['file']
-            print(order_id)
+
             order=CustomerOrderDtl()
-            fs = FileSystemStorage()
-            filename = fs.save(myfile.name, myfile)
-            uploaded_file_url = fs.url(filename)
-            order.photo=uploaded_file_url
+            if request.data.getlist('file')[0]!='undefined':
+                for f in request.data.getlist('file'):
+                    fs=FileSystemStorage()
+                    filename=fs.save(f.name,f)
+                    uploaded_file_url = fs.url(filename)
+                    order.photo=uploaded_file_url
             order.order_id=order_id
             order.user_id=request.data['user_id']
             order.product_type=request.data['product_type']
             order.prod_sub_type=request.data['prod_sub_type']
             order.category_type=request.data['model_type']
-            order.brand_name=request.data['brand_name']
-            order.catalog_number=request.data['catalog_number']
-            order.design_no=request.data['design_no']
-
-                
-            order.sahde_no=request.data['shade_no']
             order.delivery_date=request.data['delivery_date']
             order.message=request.data['message']
             session.add(order)
             for x in json.loads(request.data['order_lines']):
-                print(x)
                 addprod=CustomerAddProductDtl()
                 addprod.order_id=order.order_id
                 addprod.user_id=request.data['user_id']
                 addprod.name=x['item']
+                addprod.brand_name=x['brand_name']
+                addprod.design_number=x['design_no']
+                addprod.shade_number=x['shade_no']
+                addprod.catalogue_number=x['catalog_number']
                 addprod.size=x['count']
                 session.add(addprod)
 
@@ -366,20 +493,19 @@ def AddCustomerordes(request):
             session.close()
 
         if request.data['product_type']=='Customized Uniforms' and request.data['prod_sub_type']=='Stitching':
-            print("==========")
             sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"PT",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
             auto_order_id = session.execute(sql).fetchall()
             order_id = auto_order_id[0][0]
             if order_id == None or order_id == 0 :
                 order_id = 100000
             order_id = 'PT' + str(int(order_id + 1))
-                
-            myfile=request.FILES['file']
             order=CustomerOrderDtl()
-            fs = FileSystemStorage()
-            filename = fs.save(myfile.name, myfile)
-            uploaded_file_url = fs.url(filename)
-            order.photo=uploaded_file_url
+            if request.data.getlist('file')[0]!='undefined':
+                for f in request.data.getlist('file'):
+                    fs=FileSystemStorage()
+                    filename=fs.save(f.name,f)
+                    uploaded_file_url = fs.url(filename)
+                    order.photo=uploaded_file_url
             order.order_id=order_id
             order.user_id=request.data['user_id']
             order.product_type=request.data['product_type']
@@ -406,12 +532,13 @@ def AddCustomerordes(request):
             if order_id == None or order_id == 0 :
                 order_id = 100000
             order_id = 'PS' + str(int(order_id + 1))
-            myfile=request.FILES['file']
             order=CustomerOrderDtl()
-            fs = FileSystemStorage()
-            filename = fs.save(myfile.name, myfile)
-            uploaded_file_url = fs.url(filename)
-            order.photo=uploaded_file_url
+            if request.data.getlist('file')[0]!='undefined':
+                for f in request.data.getlist('file'):
+                    fs=FileSystemStorage()
+                    filename=fs.save(f.name,f)
+                    uploaded_file_url = fs.url(filename)
+                    order.photo=uploaded_file_url
             order.order_id=order_id
             order.user_id=request.data['user_id']
             order.product_type=request.data['product_type']
@@ -437,21 +564,21 @@ def AddCustomerordes(request):
                 session.add(addprod)
             session.commit()
             session.close()
-        if request.data['product_type']=='ReadyMade Uniforms' and request.data['prod_sub_type']=='OrderBasedForm':
-            print(request.data)
-            order=CustomerOrderDtl()
+        if request.data['product_type']=='Ready Made Uniforms' and request.data['prod_sub_type']=='Order Based Form':
+            print("readymade")
             sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"PR",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
             auto_order_id = session.execute(sql).fetchall()
             order_id = auto_order_id[0][0]
             if order_id == None or order_id == 0 :
                 order_id = 100000
             order_id = 'PR' + str(int(order_id + 1))
-            myfile=request.FILES['file']
             order=CustomerOrderDtl()
-            fs = FileSystemStorage()
-            filename = fs.save(myfile.name, myfile)
-            uploaded_file_url = fs.url(filename)
-            order.photo=uploaded_file_url
+            if request.data.getlist('file')[0]!='undefined':
+                for f in request.data.getlist('file'):
+                    fs=FileSystemStorage()
+                    filename=fs.save(f.name,f)
+                    uploaded_file_url = fs.url(filename)
+                    order.photo=uploaded_file_url
             order.order_id=order_id
             order.user_id=request.data['user_id']
             order.product_type=request.data['product_type']
@@ -468,42 +595,12 @@ def AddCustomerordes(request):
                 addprod.user_id=request.data['user_id']
                 addprod.name=x['item']
                 addprod.size=x['count']
+                addprod.avail_size=x['size']
                 session.add(addprod)
             session.commit()
             session.close()
-        if request.data['product_type']=='ReadyMade Uniforms' and request.data['prod_sub_type']=='StockBasedList':
-            sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"PR",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
-            auto_order_id = session.execute(sql).fetchall()
-            order_id = auto_order_id[0][0]
-            if order_id == None or order_id == 0 :
-                order_id = 100000
-            order_id = 'PR' + str(int(order_id + 1))
-            myfile=request.FILES['file'] 
-            order=CustomerOrderDtl()
-            fs = FileSystemStorage()
-            filename = fs.save(myfile.name, myfile)
-            uploaded_file_url = fs.url(filename)
-            order.photo=uploaded_file_url
-            order.order_id=order_id
-            order.user_id=request.data['user_id']
-            order.product_type=request.data['product_type']
-            order.prod_sub_type=request.data['prod_sub_type']
-            order.category_type=request.data['model_type']
-            order.delivery_date=request.data['delivery_date']
-            order.message=request.data['message']
-            session.add(order)
-            for x in json.loads(request.data['order_lines']):
-                addprod=CustomerAddProductDtl()
-                addprod.order_id=order.order_id
-                addprod.user_id=request.data['user_id']
-                addprod.name=x['item']
-                addprod.size=x['count']
-                session.add(addprod)
-            session.commit()
-            session.close()
-            print(request.data['product_type']=='Uniform Accesoriess' and request.data['prod_sub_type']=='none')
         if request.data['product_type']=='Uniform Accesoriess' and request.data['prod_sub_type']=='none':
-            print("=====ew=e=wewerwerre")
+            print("====================xssdsdsdsdsds")
             sql = text('SELECT MAX(CONVERT(REPLACE(order_id,"AC",""),UNSIGNED INTEGER)) as auto_order_id from customer_order_dtls')
             auto_order_id = session.execute(sql).fetchall()
             order_id = auto_order_id[0][0]
@@ -546,14 +643,14 @@ def SaveLabours(request):
             # email_check = session.query(UsersDtl).filter(UsersDtl.email==email).all()
             # if(len(email_check) > 0):
             #     return Response({'status': 'email  exists','message':'email already exists'})
-
+        #getUserId('LA')
         user_id = getUserId('LA')
         otpParams ={
                 "user_id":user_id,
                 "email":email
             }
-        emailResult=SendEmail(otpParams)
-        print(emailResult)
+        #emailResult=SendEmail(otpParams)
+        #print(emailResult)
            
 
         user = UsersDtl()
@@ -578,17 +675,19 @@ def SaveLabours(request):
         labors.alternate_number=request.data['alternate_number']
         labors.work_type=request.data['work_type']
         labors.email=request.data['email']
-        labors.status="active"
+        labors.status=request.data['status']
         session.add(labors)
         session.commit()
-        if(emailResult == True):
-            session.commit()
-            session.close()
-            return Response({'response':'success'})
-        else:
-            session.rollback()
-            session.close()
-            return Response({'response':'Error occured'})
+        return Response({'response': 'success'})
+
+        # if(emailResult == True):
+        #     session.commit()
+        #     session.close()
+        #     return Response({'response':'success'})
+        # else:
+        #     session.rollback()
+        #     session.close()
+        #     return Response({'response':'Error occured'})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
@@ -602,6 +701,8 @@ def SaveMachiners(request):
         session = dbsession.Session()
         email=request.data['email']
         phone=request.data['phone_number']
+        otp_cre_time = datetime.datetime.now().replace(microsecond=0)
+        otp_expire_time = otp_cre_time+datetime.timedelta(minutes = 5)
             # phno_check = session.query(UsersDtl).filter(UsersDtl.phone==phone).all()
             # if(len(phno_check) > 0):
             #     return Response({'status': 'phone num exists','message':'phone num already exists'})
@@ -614,8 +715,8 @@ def SaveMachiners(request):
             "user_id":user_id,
             "email":email
             }
-        emailResult=SendEmail(otpParams)
-        print(emailResult)
+        # emailResult=SendEmail(otpParams)
+        # print(emailResult)
         user = UsersDtl()
         raw_password = make_password(request.data['password'])
         user.user_id = user_id
@@ -640,14 +741,20 @@ def SaveMachiners(request):
         machine.org_name=request.data['org_name']
         session.add(machine)
         session.commit()
-        if(emailResult == True):
-            session.commit()
-            session.close()
-            return Response({'response':'success'})
-        else:
-            session.rollback()
-            session.close()
-            return Response({'response':'Error occured'})
+        OTP = generateRandomOTP()
+        params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+        otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+        session.commit()
+        otpsParams = {
+        "otp_val": OTP , 
+        "rece_mobile_no":phone,
+        }
+        message=Sms(otpsParams)
+
+        sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
@@ -716,7 +823,8 @@ def SaveSupplier(request):
         print(request.data)
         delete_id=request.data['temp_id']
         data=session.query(SupplierTempDtl.name,SupplierTempDtl.start_year,SupplierTempDtl.comapny_name,SupplierTempDtl.place,SupplierTempDtl.state,SupplierTempDtl.district,SupplierTempDtl.pincode,SupplierTempDtl.gst_number,SupplierTempDtl.udayam_number,SupplierTempDtl.phone_number,SupplierTempDtl.alt_phone_number,SupplierTempDtl.email,SupplierTempDtl.password).filter(SupplierTempDtl.temp_id==delete_id).one()
-        print(data[0])
+        otp_cre_time = datetime.datetime.now().replace(microsecond=0)
+        otp_expire_time = otp_cre_time+datetime.timedelta(minutes = 5)
         #session.query(SupplierTempDtl).filter(SupplierTempDtl.temp_id==delete_id).delete()
 
             # phno_check = session.query(UsersDtl).filter(UsersDtl.phone==phone).all()
@@ -735,8 +843,8 @@ def SaveSupplier(request):
                 "email":data[11]
                 }
             print(data[11])
-            emailResult=SendEmail(otpParams)
-            print(emailResult)
+            # emailResult=SendEmail(otpParams)
+            # print(emailResult)
             user = UsersDtl()
 
             raw_password = make_password(data[12])
@@ -772,6 +880,21 @@ def SaveSupplier(request):
             supplier.email=data[11]
             session.add(supplier)
             session.commit()
+            OTP = generateRandomOTP()
+            params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+            otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+            session.commit()
+            otpsParams = {
+                "otp_val": OTP , 
+                "rece_mobile_no":data[9],
+                }
+            message=Sms(otpsParams)
+
+            sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+            prod_list = session.execute(sql).fetchall()
+            product_dtls_list = [dict(row) for row in prod_list]
+            return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
+
         if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='stitching':
 
 
@@ -781,8 +904,8 @@ def SaveSupplier(request):
                 "user_id":user_id,
                 "email":data[11]
                 }
-            emailResult=SendEmail(otpParams)
-            print(emailResult)
+            #emailResult=SendEmail(otpParams)
+            # print(emailResult)
             user = UsersDtl()
 
             raw_password = make_password(data[12])
@@ -823,14 +946,28 @@ def SaveSupplier(request):
                 production_dtls.sid=supplier.sid
                 session.add(production_dtls)
                 session.commit()
+            OTP = generateRandomOTP()
+            params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+            otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+            session.commit()
+            otpsParams = {
+                "otp_val": OTP , 
+                "rece_mobile_no":data[9],
+                }
+            message=Sms(otpsParams)
+
+            sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+            prod_list = session.execute(sql).fetchall()
+            product_dtls_list = [dict(row) for row in prod_list]
+            return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
         if request.data['prod_type']=='Customized Uniforms' and request.data['sub_type']=='fabricandstitching':
             user_id = getUserId('FT')
             otpParams ={
                 "user_id":user_id,
                 "email":data[11]
                 }
-            emailResult=SendEmail(otpParams)
-            print(emailResult)
+            #emailResult=SendEmail(otpParams)
+            #print(emailResult)
             order_lines=json.dumps(request.data['order_lines'])
             user = UsersDtl()
 
@@ -879,6 +1016,20 @@ def SaveSupplier(request):
                 session.add(production_dtls)
                 session.commit()
             session.commit()
+            OTP = generateRandomOTP()
+            params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+            otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+            session.commit()
+            otpsParams = {
+                "otp_val": OTP , 
+                "rece_mobile_no":data[9],
+                }
+            message=Sms(otpsParams)
+
+            sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+            prod_list = session.execute(sql).fetchall()
+            product_dtls_list = [dict(row) for row in prod_list]
+            return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
         if request.data['prod_type']=='Ready Made Uniforms':
             print("REady")
             user_id = getUserId('RM')
@@ -886,8 +1037,8 @@ def SaveSupplier(request):
                 "user_id":user_id,
                 "email":data[11]
                 }
-            emailResult=SendEmail(otpParams)
-            print(emailResult)
+            #emailResult=SendEmail(otpParams)
+            #print(emailResult)
             user = UsersDtl()
 
             raw_password = make_password(data[12])
@@ -904,7 +1055,7 @@ def SaveSupplier(request):
             supplier.organization_name=data[2]
             supplier.org_started_year=data[1]
             supplier.prod_type=request.data['prod_type']
-            supplier.prod_sub_type=request.data['sub_type']
+            supplier.prod_sub_type='orderbasedform'
             supplier.place=data[3]
             supplier.state=data[4]
             supplier.district=data[5]
@@ -917,14 +1068,28 @@ def SaveSupplier(request):
             supplier.readymade_providng_items=request.data['readymade_providng_items'] 
             session.add(supplier)
             session.commit()
+            OTP = generateRandomOTP()
+            params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+            otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+            session.commit()
+            otpsParams = {
+                "otp_val": OTP , 
+                "rece_mobile_no":data[9],
+                }
+            message=Sms(otpsParams)
+
+            sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+            prod_list = session.execute(sql).fetchall()
+            product_dtls_list = [dict(row) for row in prod_list]
+            return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
         if request.data['prod_type']=='Uniform Accessories':
             user_id = getUserId('AS')
             otpParams ={
             "user_id":user_id,
             "email":data[11]
             }
-            emailResult=SendEmail(otpParams)
-            print(emailResult)
+            # emailResult=SendEmail(otpParams)
+            # print(emailResult)
             
             user = UsersDtl()
 
@@ -955,10 +1120,21 @@ def SaveSupplier(request):
             supplier.Providing_accesoseries=request.data['providing_accesoseries']
             session.add(supplier)
             session.commit()
-                
-            if(emailResult == True):
-                session.commit()
-                session.close()
+            OTP = generateRandomOTP()
+            params = {"otp_val": OTP , "otp_cre_time" : otp_cre_time, "otp_exp_time": otp_expire_time}
+            otp_user = session.query(UsersDtl).filter(UsersDtl.user_id==user_id).update(params)
+            session.commit()
+            otpsParams = {
+                "otp_val": OTP , 
+                "rece_mobile_no":data[9],
+                }
+            message=Sms(otpsParams)
+
+            sql = text('SELECT user_id  from users_dtls where user_id="'+user_id+'"' )
+            prod_list = session.execute(sql).fetchall()
+            product_dtls_list = [dict(row) for row in prod_list]
+            return Response({'response': 'Data saved success fully',"product_dtls_list":product_dtls_list})
+
 
         session.close()
         return Response({'response': 'Data saved success fully'})
@@ -1036,6 +1212,7 @@ def prod_dtls_save(request):
         product.prod_desc=request.data['prod_desc']
         product.condition=request.data['condition']
         product.shades=request.data['brand_name']
+        product.careted_time=datetime.datetime.now()
         session.add(product)
         session.commit()
         session.close()
@@ -1189,7 +1366,7 @@ def supplier_list(request):
     try:
         session = dbsession.Session()
         user_id = request.data['user_id']
-        sql = text('SELECT email,phone_number,prod_type,prod_sub_type from supplier_table where user_id="'+user_id+'"')
+        sql = text('SELECT email,phone_number,prod_type,prod_sub_type,organization_name,place,state,district from supplier_table where user_id="'+user_id+'"')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1210,8 +1387,11 @@ def productSupplideerlst(request):
         sql = text('SELECT * from customer_order_dtls where order_id="'+order_id+'" and prod_sub_type="'+sub_type+'"' )
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('SELECT * from customer_add_product_dtls where order_id="'+order_id+'"' )
+        prod_list = session.execute(sql).fetchall()
+        product__list = [dict(row) for row in prod_list]
         session.close()
-        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"product__list":product__list})
     except SQLAlchemyError as e:
         print(e)
         session.rollback()
@@ -1256,8 +1436,8 @@ def prod_list_cat(request):
 
         # session.close()
         # return Response({'response': 'success',"product_dtls_list":product_dtls_list,"supplier_details_list":supplier_details_list})
-        columns =['organization_name','place','state','district','phone_number','item_name','image','price','status','prod_type','prod_id']
-        cart_list = session.query(SupplierTable.organization_name, SupplierTable.place,SupplierTable.state,SupplierTable.district,SupplierTable.phone_number,ProductDtl.item_name,ProductDtl.image,ProductDtl.price,ProductDtl.status,ProductDtl.prod_type,ProductDtl.prod_id).join(ProductDtl, SupplierTable.user_id == ProductDtl.user_id).all()
+        columns =['organization_name','place','state','district','phone_number','item_name','image','price','status','prod_type','prod_id','item_code','shades','size','condition']
+        cart_list = session.query(SupplierTable.organization_name, SupplierTable.place,SupplierTable.state,SupplierTable.district,SupplierTable.phone_number,ProductDtl.item_name,ProductDtl.image,ProductDtl.price,ProductDtl.status,ProductDtl.prod_type,ProductDtl.prod_id,ProductDtl.item_code,ProductDtl.shades,ProductDtl.size,ProductDtl.condition).join(ProductDtl, SupplierTable.user_id == ProductDtl.user_id).all()
         print(cart_list)
         cart_list = json.dumps(cart_list, cls=AlchemyEncoder)
         cart_list = pd.read_json(cart_list)
@@ -1283,7 +1463,7 @@ def orders_enquiries(request):
         # product_type=request.data['product_type']
         # prod_sub_type=request.data['prod_sub_type']
         session = dbsession.Session()
-        sql = text("select customer_dtls.user_id,customer_dtls.pincode,customer_order_dtls.order_id,customer_order_dtls.product_type, customer_order_dtls.category_type,customer_order_dtls.prod_sub_type,customer_order_dtls.photo,customer_order_dtls.delivery_date from  customer_order_dtls join customer_dtls on customer_order_dtls.user_id=customer_dtls.user_id  where product_type NOT IN('ReadyMade Uniforms')")
+        sql = text("select customer_dtls.user_id,customer_dtls.pincode,customer_order_dtls.order_id,customer_order_dtls.product_type, customer_order_dtls.category_type,customer_order_dtls.prod_sub_type,customer_order_dtls.photo,customer_order_dtls.delivery_date from  customer_order_dtls join customer_dtls on customer_order_dtls.user_id=customer_dtls.user_id")
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         sql = text("SELECT * from customer_dtls")
@@ -1304,7 +1484,7 @@ def users_list(request):
         # product_type=request.data['product_type']
         # prod_sub_type=request.data['prod_sub_type']
         session = dbsession.Session()
-        sql = text("SELECT * from users_dtls where status IS  NULL and user_type='supplier'")
+        sql = text("select users_dtls.user_id,users_dtls.user_id,users_dtls.otp_cre_time,supplier_table.supplier_name,supplier_table.place,supplier_table.district,supplier_table.state,supplier_table.phone_number,supplier_table.email,supplier_table.prod_type,supplier_table.prod_sub_type from  users_dtls join supplier_table on supplier_table.user_id=users_dtls.user_id where status IS  NULL and user_type='supplier' order by usid desc")
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1341,7 +1521,7 @@ def SendConform(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('conform.html')
-    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'admin@uniconform.in', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1406,7 +1586,7 @@ def SendEmail(params):
     }
     plaintext = get_template('mail.txt')
     htmly     = get_template('mail.html')
-    subject, from_email, to = 'Hello from Uniconform', 'anjujoy0310@gmail.com', params['email']
+    subject, from_email, to = 'Hello from Uniconform', 'admin@uniconform.in', params['email']
     text_content = plaintext.render(ctx)
     html_content = htmly.render(ctx)
     msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1431,7 +1611,7 @@ def Email(request):
         }
         plaintext = get_template('mail.txt')
         htmly     = get_template('contact.html')
-        subject, from_email, to = request.data['subject'], 'anjujoy0310@gmail.com', request.data['email']
+        subject, from_email, to = request.data['subject'], 'admin@uniconform.in', request.data['email']
         text_content = plaintext.render(ctx)
         html_content = htmly.render(ctx)
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to])
@@ -1510,6 +1690,7 @@ def quotaton_form(request):
         order.category_type=request.data['model_type']
         order.prod_sub_type=request.data['prod_sub_type']
         order.prod_type=request.data['product_type']
+        order.expiry_date=request.data['delivery_date']
         session.add(order)
         session.flush()
         for x in json.loads(request.data['order_lines']):
@@ -1519,6 +1700,7 @@ def quotaton_form(request):
             addprod.item_name=x['item']
             addprod.count=x['count']
             addprod.rate_per_item=x['rate_per_meter']
+            addprod.total__amt=x['total_amount']
             session.add(addprod)
 
         session.commit()
@@ -1536,9 +1718,31 @@ def quote_list(request):
     try:
         user_id = request.data['user_id']
         session = dbsession.Session()
-        sql = text('select quotation_table.quotatit_id, quotation_table.order_form_id,quotation_table.user_id,quotation_table.supplier_id,quotation_table.grand_total,quotation_table.quatation_form_id,quotation_table.is_order_accepted,quotation_table.prod_type,quotation_table.prod_sub_type from quotation_table join qutation_dtls on quotation_table.quotatit_id=qutation_dtls.qutation_id where user_id="'+user_id+'"')
+        sql = text('select DISTINCT(quotation_table.quotatit_id),quotation_table.quotatit_id, quotation_table.order_form_id,quotation_table.user_id,quotation_table.supplier_id,quotation_table.grand_total,quotation_table.quatation_form_id,quotation_table.is_order_accepted,quotation_table.prod_type,quotation_table.prod_sub_type from quotation_table join qutation_dtls on quotation_table.quotatit_id=qutation_dtls.qutation_id where qutation_dtls.user_id="'+user_id+'" and expiry_date> CURDATE()')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('select DISTINCT(quotation_table.quotatit_id),quotation_table.quotatit_id, quotation_table.order_form_id,quotation_table.user_id,quotation_table.supplier_id,quotation_table.grand_total,quotation_table.quatation_form_id,quotation_table.is_order_accepted,quotation_table.prod_type,quotation_table.prod_sub_type from quotation_table join qutation_dtls on quotation_table.quotatit_id=qutation_dtls.qutation_id where qutation_dtls.user_id="'+user_id+'" and expiry_date< CURDATE()' )
+        exp_prod_list = session.execute(sql).fetchall()
+        exp_product_dtls_list = [dict(row) for row in exp_prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"exp_product_dtls_list":exp_product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getQuotationlist(request):
+    try:
+        user_id = request.data['user_id']
+        quatation_form_id=request.data['qutation_form_id']
+        session = dbsession.Session()
+        sql = text('select quotation_table.quotatit_id, quotation_table.order_form_id,quotation_table.user_id,quotation_table.supplier_id,quotation_table.grand_total,quotation_table.quatation_form_id,quotation_table.is_order_accepted,quotation_table.prod_type,quotation_table.prod_sub_type,qutation_dtls.item_name,qutation_dtls.count,qutation_dtls.rate_per_item,qutation_dtls.total__amt from quotation_table join qutation_dtls on quotation_table.quotatit_id=qutation_dtls.qutation_id where supplier_id="'+user_id+'" and quotation_table.quatation_form_id="'+quatation_form_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        
         session.close()
         return Response({'response': 'success',"product_dtls_list":product_dtls_list})
     except SQLAlchemyError as e:
@@ -1546,6 +1750,10 @@ def quote_list(request):
         session.rollback()
         session.close()
         return Response({'response': 'Error occured'})
+
+
+
+        
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
@@ -1571,13 +1779,36 @@ def get_qouteditem(request):
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny, ])
+def quotelist_for_all(request):
+    try:
+        quote_id = request.data['quote_id']
+        session = dbsession.Session()
+        sql = text('SELECT * FROM quotation_table where quatation_form_id="'+quote_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('SELECT * FROM qutation_dtls where qutation_form_id="'+quote_id+'"')
+        quote_list = session.execute(sql).fetchall()
+        quote_dtls_list = [dict(row) for row in quote_list]
+        print(quote_dtls_list)
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"quote_dtls_list":quote_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
 def update_quotes(request):
     try:
         user_id = request.data['user_id']
         quote_id = request.data['quote_id']
         order_status=request.data['order_status']
+        expiry_date=request.data['expiry_date']
         session = dbsession.Session()
         session.query(QuotationTable).filter(QuotationTable.quatation_form_id==quote_id,QuotationTable.user_id==user_id).update({'is_order_accepted':order_status})
+        session.query(QuotationTable).filter(QuotationTable.quatation_form_id==quote_id,QuotationTable.user_id==user_id).update({'expiry_date':expiry_date})
         session.commit()
         session.close()
         return Response({'response': 'success'})
@@ -1593,7 +1824,7 @@ def buyers_list(request):
     try:
         
         session = dbsession.Session()
-        sql = text('SELECT * FROM customer_dtls')
+        sql = text('SELECT * FROM customer_dtls order by customer_id desc')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1629,7 +1860,7 @@ def customer_details(request):
 def all_supplier_list(request):
     try:
         session = dbsession.Session()
-        sql = text('SELECT * FROM supplier_table')
+        sql = text('SELECT * FROM supplier_table order by sid desc')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1645,7 +1876,7 @@ def all_supplier_list(request):
 def order_details(request):
     try:
         session = dbsession.Session()
-        sql = text('SELECT * FROM customer_order_dtls')
+        sql = text('SELECT * FROM customer_order_dtls order by id desc')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1678,7 +1909,8 @@ def quote_list_by_id(request):
     try:
         user_id = request.data['user_id']
         session = dbsession.Session()
-        sql = text("select * from quotation_table where  is_order_accepted='Accepted Proposal' and supplier_id='"+user_id+"'")
+        
+        sql = text("select * from quotation_table where supplier_id='"+user_id+"' order by quotatit_id desc")
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1694,7 +1926,8 @@ def quote_list_by_id(request):
 def pincode(request):
     try:
         session = dbsession.Session()
-        sql = text(' select pincode from supplier_table')
+        user_id=request.data['user_id']
+        sql = text('select pincode from supplier_table where user_id="'+user_id+'"')
         prod_list = session.execute(sql).fetchall()
         product_dtls_list = [dict(row) for row in prod_list]
         session.close()
@@ -1705,6 +1938,290 @@ def pincode(request):
         session.close()
         return Response({'response': 'Error occured'})
 
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def supplierdetails_by_id(request):
+    try:
+        session = dbsession.Session()
+        user_id=request.data['user_id']
+        sql = text('select *  from supplier_table where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def customerdetails_by_id(request):
+    try:
+        session = dbsession.Session()
+        user_id=request.data['user_id']
+        sql = text('select *  from customer_dtls where user_id="'+user_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def banneraddd(request):
+    try:
+        session = dbsession.Session()
+        for f in request.data.getlist('myfile'):
+            print("=========")
+            banner = BannerTable()
+            fs=FileSystemStorage()
+            filename=fs.save(f.name,f)
+            uploaded_file_url = fs.url(filename)
+            banner.banner_path=uploaded_file_url
+            banner.banner_type=request.data['banner_type']
+            banner.banner_name=request.data['banner_name']
+            session.add(banner)
+        session.commit()
+        session.close()
+        return Response({'response': 'Data saved success fully'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def addbannerList(request):
+    try:
+        session = dbsession.Session()
+        sql = text('select *  from banner_table')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def ImageDetails(request):
+    try:
+        session = dbsession.Session()
+        banner_id = request.data['id']
+        sql = text("select *  from banner_table where banner_id='"+banner_id+"'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+    
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def EditBannerImage(request):
+    try:
+        session = dbsession.Session()
+        banner_id = request.data['id']
+        for f in request.data.getlist('myfile'):
+            banner = BannerTable()
+            fs=FileSystemStorage()
+            filename=fs.save(f.name,f)
+            uploaded_file_url = fs.url(filename)
+            session.query(BannerTable).filter(BannerTable.banner_id==banner_id).update({'banner_path':uploaded_file_url})
+            session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def deletebanner(request):
+    try:
+        session = dbsession.Session()
+        banner_id = request.data['id']
+        session.query(BannerTable).filter(BannerTable.banner_id==banner_id).delete()
+        session.commit()
+        session.close()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getOrderdetials(request):
+    try:
+     
+        order_id = request.data['order_id']
+        session = dbsession.Session()
+        sql = text('select *  from customer_order_dtls where order_id="'+order_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('select *  from customer_add_product_dtls where order_id="'+order_id+'"')
+        add_product_dtls = session.execute(sql).fetchall()
+        add_product_dtls_dtls = [dict(row) for row in add_product_dtls]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"add_product_dtls_dtls":add_product_dtls_dtls})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def production_details(request):
+    try:
+     
+        sid = request.data['sid']
+        types = request.data['type']
+        session = dbsession.Session()
+        sql = text('select *  from supplier_table where sid="'+sid+'"  and prod_sub_type="'+types+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        sql = text('select *  from supplier_production_dtls where sid="'+sid+'"')
+        add_product_dtls = session.execute(sql).fetchall()
+        add_product_dtls_dtls = [dict(row) for row in add_product_dtls]
+        session.close()
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list,"add_product_dtls_dtls":add_product_dtls_dtls})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getbannerimages(request):
+    try:
+     
+        types = request.data['type']
+        session = dbsession.Session()
+        sql = text('select *  from banner_table where banner_type ="'+types+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def generatebill(request):
+    session = dbsession.Session()
+
+    try:
+        order_id=request.data['order_id']
+        sub_type=request.data['type']
+        quote_id=request.data['quote_id']
+        email=request.data['emailto']
+        grand_total=request.data['grand_total']
+       
+        sql = text('SELECT * from customer_order_dtls where order_id="'+order_id+'" and prod_sub_type="'+sub_type+'"' )
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list1 = [dict(row) for row in prod_list]
+        sql = text('SELECT * from customer_add_product_dtls where order_id="'+order_id+'"' )
+        prod_list = session.execute(sql).fetchall()
+        product__list2 = [dict(row) for row in prod_list]
+
+        quote_id = request.data['quote_id']
+        sql = text('SELECT * FROM quotation_table where quatation_form_id="'+quote_id+'"')
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list3 = [dict(row) for row in prod_list]
+        sql = text('SELECT * FROM qutation_dtls where qutation_form_id="'+quote_id+'"')
+        quote_list = session.execute(sql).fetchall()
+        quote_dtls_list = [dict(row) for row in quote_list]
+ 
+        buyer_id=request.data['buyer_id']
+        sql = text('select *  from customer_dtls where user_id="'+buyer_id+'"')
+        buyers_list = session.execute(sql).fetchall()
+        buyers_list_dtls = [dict(row) for row in buyers_list]
+
+        supplier_id=request.data['supplier_id']
+        sql = text('select *  from supplier_table where user_id="'+supplier_id+'"')
+        supplier_table = session.execute(sql).fetchall()
+        supplier_table_dtls = [dict(row) for row in supplier_table]
+
+
+        subject = 'Uniconform, -Quotation no.{}'.format(quote_id)
+        message='Please, find the attached Quotation  for your recent orders'
+        emails=[email]
+        mail = EmailMessage(subject, message, "anjujoy0310@gmail.com",emails)
+        html=render_to_string('agrrement.html',{'order':product_dtls_list3,'order_dtls':quote_dtls_list,'buyer_dtls':buyers_list_dtls,'supplier_dtls':supplier_table_dtls,'grand_total':grand_total})
+        out = BytesIO()
+        weasyprint.HTML(string=html,base_url="http://www.jonathantneal.com/examples/invoice/logo.png").write_pdf(out)
+        mail.attach('order_{}.pdf'.format(quote_id),out.getvalue(),'application/pdf')
+        mail.send()
+        return Response({'response': 'success'})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getAccessories(request):
+    try:
+     
+    
+        session = dbsession.Session()
+        sql = text("select *  from product_dtls where prod_type ='Accesories' or prod_type='Ready mades'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny, ])
+def getMachines(request):
+    try:
+
+        session = dbsession.Session()
+        sql = text("select *  from product_dtls where prod_type ='machines'")
+        prod_list = session.execute(sql).fetchall()
+        product_dtls_list = [dict(row) for row in prod_list]
+        return Response({'response': 'success',"product_dtls_list":product_dtls_list})
+    except SQLAlchemyError as e:
+        print(e)
+        session.rollback()
+        session.close()
+        return Response({'response': 'Error occured'})
+
+
+
+
+
+
+
+
+        
 
         
 

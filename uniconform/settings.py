@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
-
+import sys
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,11 +25,8 @@ SECRET_KEY = '-1$2^!l%sbf)&t54o4^g*928dbvvdho@^^c85)2t*ahv&wf7fu'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [ '*']
-
-CORS_ALLOWED_ORIGINS = [
-    # "http://localhost:4200",
-]
+ALLOWED_HOSTS=['*']
+CORS_ORIGIN_ALLOW_ALL = True
 # Application definition
 
 INSTALLED_APPS = [
@@ -43,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'djrill'
 ]
 
 
@@ -51,13 +49,13 @@ INSTALLED_APPS = [
 #     'JWT_AUTH_HEADER_PREFIX': 'Token',
 # }
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',  # <-- And here
-     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        # 'rest_framework.permissions.AllowAny',
-        'rest_framework.permissions.IsAuthenticated', 
-        )
+    # 'DEFAULT_AUTHENTICATION_CLASSES': (
+    #     'rest_framework.authentication.TokenAuthentication',  # <-- And here
+    #  ),
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     # 'rest_framework.permissions.AllowAny',
+    #     'rest_framework.permissions.IsAuthenticated', 
+    #     )
 }
 
 import os
@@ -166,10 +164,68 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST='smtp.gmail.com'
-EMAIL_PORT=587
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST='smtp.gmail.com'
+# EMAIL_PORT=587
+# EMAIL_HOST_USER = 'anjujoy0310@gmail.com'
+# EMAIL_HOST_PASSWORD = 'nnjiydaurkzgcemj'  
+# DEFAULT_FROM_EMAIL = 'anjujoy0310@gmail.com'
+# EMAIL_USE_TLS = True
+
+
+AWS_ACCESS_KEY_ID = 'AKIAWUJKMYVN32GPHB5V'
+AWS_SECRET_ACCESS_KEY='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'
+AWS_SNS_REGION_NAME='us-east-2'
+
+
+EMAIL_BACKEND = 'django_ses.SESBackend'
+AWS_ACCESS_KEY_ID = 'AKIAWUJKMYVN32GPHB5V'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_SES_REGION_NAME = 'us-east-2'
+AWS_SES_REGION_ENDPOINT = 'email.us-east-2.amazonaws.com'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[%(asctime)s][%(name)s] %(levelname)s %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S",
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        }
+    },
+    'handlers': {
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler'
+        },
+        'stderr': {
+            'level': 'ERROR',
+            'formatter': 'verbose',
+            'class': 'logging.StreamHandler',
+            'stream': sys.stderr,
+        },
+        'stdout': {
+            'level': 'INFO',
+            'formatter': 'verbose',
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['stdout'],
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['mail_admins'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    }
+}
+
 EMAIL_HOST_USER = 'uniconform1@gmail.com'
-EMAIL_HOST_PASSWORD = '18469Nazar'  
-DEFAULT_FROM_EMAIL = 'uniconform1@gmail.com'
-EMAIL_USE_TLS = True
+EMAIL_HOST_PASSWORD = '18469Nazar*'  

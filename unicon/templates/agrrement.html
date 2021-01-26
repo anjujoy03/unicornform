@@ -1,0 +1,134 @@
+<html>
+	<head>
+        <style>
+            /* reset */
+
+*
+{
+	border: 0;
+	box-sizing: content-box;
+	color: inherit;
+	font-family: inherit;
+	font-size: inherit;
+	font-style: inherit;
+	font-weight: inherit;
+	line-height: inherit;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	text-decoration: none;
+	vertical-align: top;
+
+}
+
+
+@page { margin: 0; }
+		</style>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </head>
+		<meta charset="utf-8">
+
+		<div class="container">
+			<div class="card">
+		  <div class="card-header">
+		  Quotation
+		
+		  
+		  </div>
+		  <div class="card-body">
+		  <div class="row mb-4">
+		  <div class="col-md-6 justify-content-center">
+		  <h6 class="mb-3">From:</h6>
+		  <div>
+			{% for item in buyer_dtls %}
+		  <strong>{{item.customer_name}}</strong>
+		  </div>
+		  <div>{{item.user_id}}</div>
+		  <div>{{item.organization_name}}</div>
+		  <div>{{item.place}}</div>
+		  <div>{{item.districtl}} ,{{item.state}} </div>
+		  <div>{{item.pincode}}</div>
+		  <div>Email: {{item.email}}</div>
+		  <div>Phone: +91 {{item.phone_number}}</div>
+		  {% endfor %}
+		  </div>
+
+	
+		  
+		  <div class="col-md-6 justify-content-left">
+		  <h6 class="mb-3">To:</h6>
+		  <div>
+			{% for item in supplier_dtls %}
+			<strong>{{item.supplier_name}}</strong>
+		</div>
+		<div>{{item.user_id}}</div>
+		<div>{{item.organization_name}}</div>
+		<div>{{item.place}}</div>
+		<div>{{item.district}} ,{{item.state}} </div>
+		<div>{{item.pincode}}</div>
+		<div>Email: {{item.email}}</div>
+		<div>Phone: +91 {{item.phone_number}}</div>
+		  {% endfor %}
+		  </div>
+		  
+		  
+		  
+		  </div>
+		  
+		  <div class="table-responsive-sm">
+		  <table class="table table-striped">
+		  <thead>
+		  <tr>
+		  <th class="center">#</th>
+		  <th>Item</th>
+		  <th class="right">Unit Cost</th>
+			<th class="center">Qty</th>
+		  <th class="right">Total</th>
+		  </tr>
+		  </thead>
+		  <tbody>
+		  <tr>
+			{% for item in order_dtls %}
+		  <td class="center">{{item.quotationdetails_id }}</td>
+		  <td class="left strong">{{item.item_name }}</td>
+		  <td class="left">{{item.rate_per_item }}</td>
+		  <td class="left">Rs.{{item.count}}</td>
+		  <td class="left">Rs.{{item.total__amt}}</td>
+		  {% endfor %}
+		
+		 
+		  </tr>
+		  </tbody>
+		  </table>
+		  </div>
+		  <div class="row">
+		  <div class="col-lg-4 col-sm-5">
+		  
+		  </div>
+		  
+		  <div class="col-lg-4 col-sm-5 ml-auto">
+		  <table class="table table-clear">
+		  <tbody>
+		  <tr>
+		  <td class="left">
+		  <strong>Total</strong>
+		  </td>
+		  <td class="right">
+		  <strong>Rs.{{grand_total}}</strong>
+		  </td>
+		  </tr>
+		  </tbody>
+		  </table>
+		  
+		  </div>
+		  
+		  </div>
+		  
+		  </div>
+		  </div>
+		  </div>
+
+</html>
